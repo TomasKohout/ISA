@@ -6,12 +6,24 @@
 #define ISA_MASTER_CONNECTION_H
 
 #include <string>
+#include "Error.h"
+
 using namespace std;
 
 class Connection {
 public:
     Connection();
     int hostToIp(string host);
+    class BadIpOrDomainError;
+};
+
+class Connection::BadIpOrDomainError : Error{
+public:
+    BadIpOrDomainError(string const &wha, string const &wh)
+    {
+        msg = wha + " : " + wh;
+
+    }
 };
 
 

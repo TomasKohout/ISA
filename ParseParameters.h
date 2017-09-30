@@ -6,9 +6,11 @@
 #define ISA_MASTER_PARSEPARAMETERS_H
 
 #include <string>
+#include <cstring>
 #include <unistd.h>
 #include "FileManipulator.h"
 #include "Connection.h"
+#include "Error.h"
 
 #define ERR 42
 #define OK 0
@@ -41,10 +43,61 @@ public:
     ParseParameters();
     void parse(int argc, char *argv[]);
 
+    class BadArgumentError;
+    class NotFileOrDirError;
+    class MandatoryArgsError;
+    class BadPortError;
+    class TooManyArgsError;
 
 private:
+    void setAddress(char *argv);
+    void setPortNum(char *argv);
+    void setParamT();
+    void setParamS();
+    void setParamFileC(char *argv);
+    void setParamDirC(char *argv);
+    void setParamD();
+    void setParamN();
+    void setParamA(char *argv);
+    void setParamO(char *argv);
     void areMandatoryArgsSeted();
     bool isNumeric(string str);
 };
+
+class ParseParameters::BadArgumentError : public Error{
+public:
+    BadArgumentError(string const &wha, string const &wh)  {
+        msg = wha + " : " + wh;
+    }
+};
+
+class ParseParameters::NotFileOrDirError : public Error{
+public:
+    NotFileOrDirError(string const &wha, string const &wh) {
+        msg = wha + " : " + wh;
+    }
+};
+
+class ParseParameters::MandatoryArgsError : public Error{
+public:
+    MandatoryArgsError(string const &wha, string const &wh) {
+        msg = wha +  wh;
+    }
+};
+class ParseParameters::BadPortError : public Error{
+public:
+    BadPortError(string const &wha, string const &wh) {
+        msg = wha + " : " + wh;
+    }
+};
+
+class ParseParameters::TooManyArgsError : public Error{
+public:
+    TooManyArgsError(string const &wha, string const &wh)
+    {
+        msg = wha + " : " + wh;
+    }
+};
+
 
 #endif //ISA_MASTER_PARSEPARAMETERS_H

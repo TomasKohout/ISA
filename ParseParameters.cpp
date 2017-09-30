@@ -6,6 +6,10 @@
 #include <locale>
 #include <sys/stat.h>
 #include "ParseParameters.h"
+#include <string>
+#include <iostream>
+
+using namespace std;
 
 ParseParameters::ParseParameters() {
     this->manipulate = FileManipulator();
@@ -15,65 +19,39 @@ ParseParameters::ParseParameters() {
 void ParseParameters::parse(int argc, char **argv) {
 
     for (int i = 1; i < argc; i++) {
-        if (argv[i] == "-p")
-        {
-            portNum = string(argv[++i]);
-            if (!isNumeric(portNum))
-                throw "Bad port!";
-        }
-        else if (argv[i] == "-T")
-        {
-            paramT = true;
-            portNum = "995";
-            if (paramS)
-                throw "Param -S is already seted!";
-        }
-        else if (argv[i] == "-S")
-        {
-            paramS = true;
-        }
-        else if (argv[i] == "-c" &&
-                 (paramT || paramS) &&
-                 (this->manipulate.fileOrFolder(string(argv[i+1]))) == FI)
-            paramFileC = string(argv[++i]);
-        else if (argv[i] == "-C" &&
-                 (paramT || paramS) &&
-                 (this->manipulate.fileOrFolder(string(argv[i+1]))) == FO)
-            paramDirC = string(argv[++i]);
-        else if (argv[i] == "-d")
-            paramD = true;
-        else if (argv[i] == "-n")
-            paramN = true;
-        else if (strcmp(argv[i] ,"-a") == 0){
-            paramA = string(argv[++i]);
-            if (this->manipulate.fileOrFolder(paramA) != FI)
-                throw "-a is not a file!";
-        }
-        else if (strcmp(argv[i], "-o") == 0){
-            paramO = string(argv[++i]);
-            if (this->manipulate.fileOrFolder(paramO) != FO){
-                throw "-o is not a folder!";
-        }
+        if (strcmp(argv[i] , "-p") == 0)
+            setPortNum(argv[i]);
+        else if (strcmp(argv[i] ,"-T") == 0)
+            setParamT();
+        else if (strcmp(argv[i] ,"-S") == 0)
+            setParamS();
+        else if (strcmp(argv[i] ,"-c" ) == 0 && (paramT || paramS))
+            setParamFileC(argv[++i]);
+        else if (strcmp(argv[i] ,"-C") == 0 && (paramT || paramS))
+            setParamDirC(argv[++i]);
+        else if (strcmp(argv[i] , "-d") == 0)
+            setParamD();
+        else if (strcmp(argv[i] ,"-n") == 0)
+            setParamN();
+        else if (strcmp(argv[i] ,"-a") == 0)
+            setParamA(argv[++i]);
+        else if (strcmp(argv[i], "-o") == 0)
+            setParamO(argv[++i]);
         else{
-            if (address.empty())
-            {
-                if (connection.hostToIp(string(argv[i])) == 0)
-                    address = string(argv[i]);
-
+            if (address.empty()) {
+                setAddress(argv[i]);
                 continue;
             }
-            throw "Bad arguments. Try again";
+            throw BadArgumentError("Bad arguments", "Not allowed argument or badly tipped one.");
         }
     }
-
-    ParseParameters::areMandatoryArgsSeted();
-    }
+    areMandatoryArgsSeted();
 }
 
 
 void ParseParameters::areMandatoryArgsSeted() {
     if (address.empty() || paramA.empty() || paramO.empty())
-        throw "One or many of the mandatory parameters are missing";
+        throw MandatoryArgsError("One or many of the mandatory parameters are missing", "");
 }
 
 bool ParseParameters::isNumeric(string str) {
@@ -82,6 +60,70 @@ bool ParseParameters::isNumeric(string str) {
             return false;
     }
     return true;
+}
+
+void ParseParameters::setAddress(char *argv) {
+        if (connection.hostToIp(string(argv)) == 0)
+            address = string(argv);
+        else
+            throw BadArgumentError(string(argv), "This host can not be reached");
+
+
+}
+
+void ParseParameters::setPortNum(char *argv) {
+    portNum = string(argv);
+    if (!isNumeric(portNum))
+        throw BadPortError(portNum,"Try again");
+}
+
+void ParseParameters::setParamT() {
+    paramT = true;
+    portNum = "995";
+    if (paramS)
+        throw TooManyArgsError("-T", "-S is already setted");
+}
+
+void ParseParameters::setParamS() {
+    paramS = true;
+    if (paramT)
+        throw TooManyArgsError("-S", "-T is already setted");
+}
+
+void ParseParameters::setParamFileC(char *argv) {
+    if(manipulate.fileOrFolder(string(argv)) == FI)
+        paramFileC = string(argv);
+    else
+        throw NotFileOrDirError("-c", "not a file");
+}
+
+void ParseParameters::setParamDirC(char *argv) {
+    if (manipulate.fileOrFolder(string(argv)) == FO)
+        paramDirC = string(argv);
+    else
+        throw NotFileOrDirError("-C", "not a directory");
+}
+
+void ParseParameters::setParamD() {
+    paramD = true;
+}
+
+void ParseParameters::setParamN() {
+    paramN = true;
+}
+
+void ParseParameters::setParamA(char *argv) {
+    if (manipulate.fileOrFolder(paramA) == FI)
+        paramA = string(argv);
+    else
+        throw NotFileOrDirError("-a", "not a file");
+}
+
+void ParseParameters::setParamO(char *argv) {
+    if (manipulate.fileOrFolder(paramO) == FO)
+        paramO = string(argv);
+    else
+        throw NotFileOrDirError("-o", "not a directory");
 }
 
 

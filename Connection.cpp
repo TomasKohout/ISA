@@ -14,7 +14,7 @@ int Connection::hostToIp(string host) {
     hints.ai_socktype = SOCK_STREAM;
 
     if ( getaddrinfo( host.c_str() , "110" , &hints , &servinfo) != 0)
-        return 1;
+        return -1;
 
     freeaddrinfo(servinfo);
     return 0;

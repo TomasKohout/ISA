@@ -4,14 +4,13 @@
 
 using namespace std;
 int main(int argc, char *argv[]) {
-    std::cout << "Hello, World!" << std::endl;
-
     ParseParameters params = ParseParameters();
     try {
         params.parse(argc, argv);
     }
-    catch (...){
-        
+    catch (Error& e ){
+        cerr << e.what()<<endl;
+        exit(ERR);
     }
 
 

@@ -1,6 +1,8 @@
 #include "ParseParameters.h"
 #include <string>
 #include <iostream>
+#include "Connection.h"
+#include "Error.h"
 
 using namespace std;
 int main(int argc, char *argv[]) {
@@ -13,8 +15,32 @@ int main(int argc, char *argv[]) {
         exit(ERR);
     }
 
+    if (params.paramS)
+    {
+        Connection connect = Connection(params);
 
 
-    //parseAuthFile(args->paramFileC);
+    }
+    else if (params.paramT)
+    {
+
+    }
+    else
+    {
+        Connection connect = Connection(params);
+
+        try {
+            connect.establishConnection();
+            cout << connect.recvLine() << endl;
+        }
+        catch (Error &error)
+        {
+            cerr << error.what() << endl;
+        }
+
+    }
+
+
+
     return 0;
 }

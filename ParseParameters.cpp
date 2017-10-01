@@ -13,7 +13,6 @@ using namespace std;
 
 ParseParameters::ParseParameters() {
     this->manipulate = FileManipulator();
-    this->connection = Connection();
 }
 
 void ParseParameters::parse(int argc, char **argv) {
@@ -34,7 +33,7 @@ void ParseParameters::parse(int argc, char **argv) {
         else if (strcmp(argv[i] ,"-n") == 0)
             setParamN();
         else if (strcmp(argv[i] ,"-a") == 0)
-            setParamA(argv[++i]);
+            getUserAndPass(argv[++i]);
         else if (strcmp(argv[i], "-o") == 0)
             setParamO(argv[++i]);
         else{
@@ -63,7 +62,7 @@ bool ParseParameters::isNumeric(string str) {
 }
 
 void ParseParameters::setAddress(char *argv) {
-        if (connection.hostToIp(string(argv)) == 0)
+        if ((Connection::hostToIp(string(argv))) == 0)
             address = string(argv);
         else
             throw BadArgumentError(string(argv), "This host can not be reached");
@@ -112,19 +111,35 @@ void ParseParameters::setParamN() {
     paramN = true;
 }
 
-void ParseParameters::setParamA(char *argv) {
-    if (manipulate.fileOrFolder(paramA) == FI)
-        paramA = string(argv);
-    else
-        throw NotFileOrDirError("-a", "not a file");
-}
-
 void ParseParameters::setParamO(char *argv) {
-    if (manipulate.fileOrFolder(paramO) == FO)
+    if (manipulate.fileOrFolder(string(argv)) == FO)
         paramO = string(argv);
     else
         throw NotFileOrDirError("-o", "not a directory");
 }
+
+void ParseParameters::getUserAndPass(char *argv) {
+    vector<string> vec;
+
+    if (manipulate.fileOrFolder(string(argv)) == FI)
+        paramA = string(argv);
+    else
+        throw NotFileOrDirError("-a", "not a file");
+
+    try {
+        vec = manipulate.readAuthFile(paramA);
+        USER = vec[0];
+        PASS = vec[1];
+    }
+    catch (Error &error)
+    {
+
+    }
+
+
+
+}
+
 
 
 

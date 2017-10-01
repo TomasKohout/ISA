@@ -22,7 +22,7 @@
 using namespace std;
 
 class ParseParameters{
-private:
+public:
     string address = "";
     string portNum = "110";
     bool paramT = false;    //pop3s
@@ -37,7 +37,6 @@ private:
     string paramA = "";     //auth file
     string paramO = "";     //out dir
     FileManipulator manipulate;
-    Connection connection;
 
 public:
     ParseParameters();
@@ -58,8 +57,8 @@ private:
     void setParamDirC(char *argv);
     void setParamD();
     void setParamN();
-    void setParamA(char *argv);
     void setParamO(char *argv);
+    void getUserAndPass(char *argv);
     void areMandatoryArgsSeted();
     bool isNumeric(string str);
 };

@@ -35,7 +35,9 @@ public:
     void establishConnection() override;
     void setUpSSL();
     void sendCommand(string cmd) override;
-    string recvLine();
+    string recvLine(int &size);
+    string recvMultLine();
+    string recvMsg();
 
 
 
@@ -43,8 +45,9 @@ public:
     class BadIpOrDomainError;
     class FailedToConnect;
 
+    bool writeMsg(string command);
+
 private:
-    bool writeMsg();
 
     void pop3Automat();
 

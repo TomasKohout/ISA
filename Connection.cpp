@@ -71,9 +71,10 @@ void Connection::establishConnection() {
 }
 
 void Connection::sendCommand(string cmd) {
+    cmd += "\r\n";
     if(!SSL)
     {
-        if(write(sockfd, cmd.c_str(), cmd.length()) < 0)
+        if(write(sockfd, cmd.c_str(), cmd.size()) < 0)
         {} //ERROR thrwo exception
     }
     else
@@ -84,33 +85,38 @@ void Connection::sendCommand(string cmd) {
 }
 
 string Connection::recvMessage() {
+    char buff[1];
     string ret = "";
-    char buff[1024];
-    int rcv;
+    string tmp = "";
+    int size = 0;
     if (!SSL)
     {
-        while (0 < (readSock(buff, 1)))
+        while(true)
         {
-            ret += buff;
-            bzero(buff, sizeof(buff));
-            rcv = 0;
-        }
+            tmp.clear();
+            tmp = recvLine(size);
 
-        if (rcv < 0)
-        {
-            //throw error here
+            if (tmp == ".\r\n" || size == 0)
+                break;
+            else
+            {
+                ret += tmp;
+            }
+            size = 0;
         }
+        return ret;
     }
 
     return ret;
 }
 
-string Connection::recvLine(){
+string Connection::recvLine(int &size){
     char buff[1];
     string ret = "";
     while(readSock(buff, sizeof(buff))){
         ret += buff;
-        if(ret.back() == '\n')
+        size++;
+        if(ret.back() == '\n' && ret[ret.length() - 2] == '\r')
         {
             break;
         }
@@ -128,7 +134,23 @@ ssize_t Connection::readSock(char *buff, int size){
 }
 
 bool Connection::validResponse() {
-    return (recvLine().front() == '+');
+    int a;
+    return (recvLine(a).front() == '+');
+}
+
+string Connection::recvMultLine() {
+    char buff[1];
+    string ret = "";
+
+    bool dot = false;
+    while(readSock(buff, sizeof(buff))){
+        ret += buff;
+        if(ret.back() == '\n' && dot)
+            break;
+        else if (ret.back() == '.')
+            dot = true;
+    }
+    return ret;
 }
 
 

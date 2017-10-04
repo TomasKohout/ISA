@@ -5,7 +5,14 @@
 #include <netdb.h>
 #include <cstring>
 #include <iostream>
+#include <sstream>
 #include "Connection.h"
+#include <openssl/bio.h>
+#include <openssl/ssl.h>
+#include <openssl/err.h>
+#include <openssl/pem.h>
+#include <openssl/x509.h>
+#include <openssl/x509_vfy.h>
 
 int Connection::hostToIp(string host) {
     struct addrinfo hints, *servinfo;
@@ -16,9 +23,9 @@ int Connection::hostToIp(string host) {
 
     if ( getaddrinfo( host.c_str() , "110" , &hints , &servinfo) != 0)
     {
-        freeaddrinfo(servinfo);
         return -1;
     }
+
 
     freeaddrinfo(servinfo);
     return 0;
@@ -33,7 +40,7 @@ Connection::Connection(const ParseParameters &parse) {
     paramD  =   parse.paramD;
     paramN  =   parse.paramN;
     paramO  =   parse.paramO;
-    SSL     =   parse.paramS;
+    paramS  =   parse.paramS;
     USER    =   parse.USER;
     PASS    =   parse.PASS;
 }
@@ -64,49 +71,52 @@ void Connection::establishConnection() {
 
     if (p == NULL) {
         freeaddrinfo(serverinfo);
-        throw FailedToConnect("Failed to connect", "Try again?");
+        throw FailedToConnect("Failed to connect", "Try again");
     }
+    if(paramS)
+        initSSL();
+    else if (!validResponse())
+        throw ServerError("Error" , "Server is broken?");
 
     freeaddrinfo(serverinfo);
 }
 
 void Connection::sendCommand(string cmd) {
     cmd += "\r\n";
-    if(!SSL)
+    if(!paramS)
     {
         if(write(sockfd, cmd.c_str(), cmd.size()) < 0)
-        {} //ERROR thrwo exception
+        {
+            throw ServerError("Can not write into socket", "Server closed the connection");
+        }
     }
     else
     {
-
+        if (SSL_write(ssl, cmd.c_str(), static_cast<int>(cmd.size())) < 0)
+            throw ServerError("Can not write into socket", "Server closed the connection");
     }
 
 }
 
 string Connection::recvMessage() {
-    char buff[1];
     string ret = "";
     string tmp = "";
     int size = 0;
-    if (!SSL)
+    while(true)
     {
-        while(true)
+        tmp.clear();
+        tmp = recvLine(size);
+
+        if (tmp == ".\r\n" || size == 0)
         {
-            tmp.clear();
-            tmp = recvLine(size);
-
-            if (tmp == ".\r\n" || size == 0)
-                break;
-            else
-            {
-                ret += tmp;
-            }
-            size = 0;
+            break;
         }
-        return ret;
+        else
+        {
+            ret += tmp;
+        }
+        size = 0;
     }
-
     return ret;
 }
 
@@ -125,10 +135,21 @@ string Connection::recvLine(int &size){
 }
 
 ssize_t Connection::readSock(char *buff, int size){
-    int  byte = recv(sockfd, buff, size, 0);
-    if (byte < 0)
+
+    int byte;
+    if (paramS && stupidFlag)
     {
-        //throw error
+        byte = SSL_read(ssl, buff, size);
+        if (byte < 0)
+            throw ServerError("Reading from socket is inaccesible.", "Server might be down");
+    }
+    else{
+        byte = static_cast<int>(recv(sockfd, buff, size, 0));
+        if (byte < 0)
+        {
+            throw ServerError("Reading from socket is inaccesible.", "Server might be down");
+        }
+
     }
     return byte;
 }
@@ -138,19 +159,122 @@ bool Connection::validResponse() {
     return (recvLine(a).front() == '+');
 }
 
-string Connection::recvMultLine() {
-    char buff[1];
-    string ret = "";
+bool Connection::authenticate() {
+    establishConnection();
+    int a;
+    sendCommand("USER "+ USER );
 
-    bool dot = false;
-    while(readSock(buff, sizeof(buff))){
-        ret += buff;
-        if(ret.back() == '\n' && dot)
-            break;
-        else if (ret.back() == '.')
-            dot = true;
+    if(validResponse())
+        sendCommand("PASS " + PASS );
+    else{
+        throw ServerError("USER", "Bad username");
     }
-    return ret;
+    if (validResponse())
+        return true;
+    else
+        throw ServerError("PASS", "Wrong password");
+}
+
+bool Connection::downloadMessages(int &count) {
+    int a;
+    vector<msgData> arr;
+    if (paramN)
+        arr = getOnlyNew();
+    else {
+        sendCommand("UIDL");
+        arr = parse.parseMultiline(recvMessage());
+    }
+
+    for (int i = 0; i < arr.size(); i++) {
+        ofstream outfile(paramO + "/" + arr[i].uidl);
+        sendCommand("RETR " + arr[i].id);
+        if( parse.respond(recvLine(a)))
+        {
+            outfile << recvMessage() ;
+            outfile.close();
+        } else
+            throw ServerError("Download Message", "I do not know");
+
+    }
+    count = static_cast<int>(arr.size());
+}
+
+vector<msgData> Connection::getOnlyNew() {
+    vector<string> result;
+    sendCommand("UIDL");
+    vector<msgData> uidlResult = parse.parseMultiline(recvMessage());
+    string searchStr = "ls " + paramO;
+    char fileName[200];
+    string fileNames;
+    FILE *lsResult;
+    lsResult = popen(searchStr.c_str(), "r");
+
+    while(fgets(fileName, 200, lsResult))
+    {
+        fileNames += fileName;
+    }
+
+    stringstream stream(fileNames);
+    string name;
+    while (stream >> name)
+    {
+        for (int i = 0; i < uidlResult.size(); i++) {
+            if (uidlResult[i].uidl == name)
+                uidlResult.erase(uidlResult.begin() + i);
+        }
+    }
+
+    return uidlResult;
+}
+
+void Connection::initSSL() {
+
+    if (!validResponse())
+    {
+        throw ServerError("Error", "");
+    }
+    string tmp = "STLS\r\n";
+    send(sockfd, tmp.c_str(), tmp.length(), 0);
+
+    if (!validResponse())
+    {
+        //throw ex
+    }
+    stupidFlag = true;
+    SSL_load_error_strings();
+    SSL_library_init();
+    OpenSSL_add_all_algorithms();
+    sslCtx = SSL_CTX_new(SSLv23_client_method());
+    SSL_CTX_set_options(sslCtx, SSL_OP_SINGLE_DH_USE);
+
+    ssl = SSL_new(sslCtx);
+    SSL_set_fd(ssl, sockfd);
+
+    if (SSL_connect(ssl) != 1)
+    {
+
+    }
+    //SSL_CTX_load_verify_locations(sslCtx, )
+    //cert = SSL_CTX_set_default_verify_paths("/etc/ssl/certs", "/etc/ssl/private");
+
+    if (cert == NULL)
+    {
+
+    }
+
+    name = X509_NAME_new();
+    name = X509_get_subject_name(cert);
+
+}
+
+void Connection::destSSL() {
+    ERR_free_strings();
+    EVP_cleanup();
+}
+
+void Connection::shutSSL() {
+    SSL_shutdown(ssl);
+    SSL_free(ssl);
 }
 
 

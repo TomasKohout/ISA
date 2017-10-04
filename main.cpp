@@ -1,8 +1,10 @@
+#ifndef MAIN
+#define MAIN
+
 #include "ParseParameters.h"
 #include <string>
 #include <iostream>
 #include "Connection.h"
-#include "Error.h"
 #include "ParseResponds.h"
 
 using namespace std;
@@ -16,13 +18,7 @@ int main(int argc, char *argv[]) {
         exit(ERR);
     }
 
-    if (params.paramS)
-    {
-        Connection connect = Connection(params);
-
-
-    }
-    else if (params.paramT)
+    if (params.paramT)
     {
 
     }
@@ -32,25 +28,21 @@ int main(int argc, char *argv[]) {
 
         try {
             int a;
-            connect.establishConnection();
-            cout << connect.recvLine(a) << endl;
-            connect.sendCommand("USER "+ params.USER );
-            cout << connect.recvLine(a) << endl;
-            connect.sendCommand("PASS " + params.PASS );
-            cout << connect.recvLine(a) << endl;
-            connect.sendCommand("RETR 1");
-            ParseResponds parse = ParseResponds();
-            //parse.parseMultiline(connect.recvMultLine());
-            cout << connect.recvMessage() << endl;
-            connect.sendCommand("STAT");
-            cout << connect.recvLine(a) << endl;
 
+            connect.authenticate();
+            if (connect.downloadMessages(a))
+            {
+                cout << "Bylo staženo " + to_string(a) + " zpráv!" << endl;
+            }
+            else
+                return 1;
 
         }
-        catch (Error &error)
+        catch (const Error &error)
         {
             cerr << error.what() << endl;
         }
+
 
     }
 
@@ -58,3 +50,5 @@ int main(int argc, char *argv[]) {
 
     return 0;
 }
+
+#endif

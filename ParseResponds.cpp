@@ -13,8 +13,8 @@ bool ParseResponds::respond(string msg) {
     return msg[0] == '+';
 }
 
-vector<string> ParseResponds::parseMultiline(string multLine) {
-    vector<string> array;
+vector<msgData> ParseResponds::parseMultiline(string multLine) {
+    vector<msgData> array;
     size_t count = multLine.find_first_of('\n');
 
     for (int i = 0; i <= count  ; i++) {
@@ -22,11 +22,16 @@ vector<string> ParseResponds::parseMultiline(string multLine) {
     }
 
     istringstream stream(multLine);
-    string line;
-    int i = 1;
-    for (string word; stream >> word ; i++) {
-        if (i % 2 == 0 && word.compare(".") != 0)
-            array.push_back(word);
+    string uidl;
+    string id;
+    int i = 0;
+    for (string word; stream >> id, stream >> uidl ; i++) {
+        if (id.compare(".") != 0 || uidl.compare(".") != 0)
+        {
+            array.push_back(msgData());
+            array[i].id = id;
+            array[i].uidl = uidl;
+        }
     }
 
     return array;

@@ -62,6 +62,9 @@ bool ParseParameters::isNumeric(string str) {
 }
 
 void ParseParameters::setAddress(char *argv) {
+        if (string(argv).find('.') == string::npos)
+            throw BadArgumentError("Bad argumet", string(argv));
+
         if ((Connection::hostToIp(string(argv))) == 0)
             address = string(argv);
         else

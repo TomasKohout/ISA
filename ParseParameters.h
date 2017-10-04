@@ -10,7 +10,6 @@
 #include <unistd.h>
 #include "FileManipulator.h"
 #include "Connection.h"
-#include "Error.h"
 
 #define ERR 42
 #define OK 0

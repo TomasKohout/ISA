@@ -7,17 +7,18 @@
 
 #include <string>
 #include <vector>
+#include "structures.h"
 
 using namespace std;
 class ParseResponds {
 
-    bool respond(string msg);
+
 
 
 public:
     ParseResponds();
-
-    vector<string> parseMultiline(string multLine);
+    bool respond(string msg);
+    vector<msgData> parseMultiline(string multLine);
 };
 
 

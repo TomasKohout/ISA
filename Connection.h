@@ -6,9 +6,12 @@
 #define ISA_MASTER_CONNECTION_H
 
 #include <string>
+#include <openssl/ossl_typ.h>
 #include "Error.h"
 #include "ParseParameters.h"
 #include "ConnectionInterface.h"
+#include "ParseResponds.h"
+#include "structures.h"
 
 
 using namespace std;
@@ -21,12 +24,19 @@ private:
     string portNum = "";
     bool paramD = false;    //delete messages
     bool paramN = false;    //work with new messages
+    bool paramS = false;
     string USER;            //user name
     string PASS;            //user password
     string paramO = "";     //out dir
-    bool SSL = false;
+    bool stupidFlag = false;
+    ParseResponds parse = ParseResponds();
 
     int sockfd;
+    ssl_st *ssl;
+    SSL_CTX *sslCtx;
+    SSL *cssl;
+    X509 * cert;
+    X509_NAME *name;
 
 public:
     Connection();
@@ -36,26 +46,28 @@ public:
     void setUpSSL();
     void sendCommand(string cmd) override;
     string recvLine(int &size);
-    string recvMultLine();
-    string recvMsg();
-
-
-
     string recvMessage() override;
+    string recvMultLine();
+    bool authenticate();
+    bool downloadMessages(int &count);
+
+
     class BadIpOrDomainError;
     class FailedToConnect;
-
-    bool writeMsg(string command);
+    class ServerError;
 
 private:
+    vector<msgData> getOnlyNew();
+    void initSSL();
+    void destSSL();
+    void shutSSL();
 
-    void pop3Automat();
 
     bool validResponse();
     ssize_t readSock(char *buff, int size);
 };
 
-class Connection::FailedToConnect : Error{
+class Connection::FailedToConnect : public Error{
 public:
     FailedToConnect(string const &wha, string const &wh)
     {
@@ -64,7 +76,7 @@ public:
     }
 };
 
-class Connection::BadIpOrDomainError : Error{
+class Connection::BadIpOrDomainError : public Error{
 public:
     BadIpOrDomainError(string const &wha, string const &wh)
     {
@@ -73,5 +85,13 @@ public:
     }
 };
 
+class Connection::ServerError : public Error{
+public:
+    ServerError(string const &wha, string const &wh)
+    {
+        msg = wha + " : " + wh;
+
+    }
+};
 
 #endif //ISA_MASTER_CONNECTION_H

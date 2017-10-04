@@ -64,6 +64,4 @@ std::vector<string> FileManipulator::readAuthFile(string path) {
     }
     authFile.close();
     return arr;
-
-
 }

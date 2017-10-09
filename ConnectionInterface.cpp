@@ -143,9 +143,10 @@ vector<msgData> ConnectionInterface::getUIDLs(){
  * @return
  */
 vector<msgData> ConnectionInterface::getOnlyNew() {
-    vector<string> result;
+    vector<msgData> uidlResult;
     sendCommand("UIDL");
-    vector<msgData> uidlResult = parseMultiline(recvMessage());
+
+    uidlResult = parseMultiline(recvMessage());
     vector<msgData> localMsgs = getUIDLs();
     for (int j = 0; j < localMsgs.size(); j++) {
         for (int i = 0; i < uidlResult.size(); i++) {
@@ -158,18 +159,19 @@ vector<msgData> ConnectionInterface::getOnlyNew() {
 }
 
 vector<msgData> ConnectionInterface::getDelMsg() {
-    vector<string> result;
+    vector<msgData> uidlResult;
     sendCommand("UIDL");
-    vector<msgData> uidlResult = parseMultiline(recvMessage());
+    uidlResult = parseMultiline(recvMessage());
     vector<msgData> localMsgs = getUIDLs();
     for (int j = 0; j < localMsgs.size(); j++) {
         for (int i = 0; i < uidlResult.size(); i++) {
-            if (uidlResult[i].uidl != localMsgs[j].uidl)
-                uidlResult.erase(uidlResult.begin() + i);
+            if (uidlResult[i].uidl == localMsgs[j].uidl)
+                localMsgs[j].id = uidlResult[i].id;
         }
+        if(localMsgs[j].id.empty())
+            localMsgs.erase(localMsgs.begin() + j--);
     }
-
-    return uidlResult;
+    return localMsgs;
 }
 
 int ConnectionInterface::hostToIp(string host) {
@@ -184,7 +186,6 @@ int ConnectionInterface::hostToIp(string host) {
     {
         return -1;
     }
-
 
     freeaddrinfo(servinfo);
     return 0;
@@ -223,6 +224,7 @@ void ConnectionInterface::createSock() {
 
 void ConnectionInterface::initSSL() {
     long retSSLCert;
+    createSock();
 
     if (paramS)
     {
@@ -305,14 +307,12 @@ vector<msgData> ConnectionInterface::parseMultiline(string multLine) {
     string id;
     int i = 0;
     for (string word; stream >> id, stream >> uidl ; i++) {
-        if (id.compare(".") != 0 || uidl.compare(".") != 0)
-        {
+        if (id.compare(".") != 0 || uidl.compare(".") != 0) {
             array.push_back(msgData());
             array[i].id = id;
             array[i].uidl = uidl;
         }
     }
-
     return array;
 }
 
@@ -320,11 +320,11 @@ bool ConnectionInterface::deleteMessages(int &count) {
     vector<msgData> msg = getDelMsg();
 
     for (int i = 0; i < msg.size(); i++) {
-        sendCommand("DEL " + msg[i].id);
+        sendCommand("DELE " + msg[i].id);
         if (!validResponse())
             throw ServerError("DEL", "Can not delete this email with ID: " + msg[i].id + " and UIDL: " + msg[i].uidl);
     }
-
+    count = msg.size();
     return true;
 }
 

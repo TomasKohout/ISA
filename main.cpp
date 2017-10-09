@@ -16,15 +16,19 @@ int main(int argc, char *argv[]) {
         {
             TLSConnection tlsConnection = TLSConnection(params);
             tlsConnection.authenticate();
-            if (tlsConnection.downloadMessages(a))
+            if (!params.paramD)
             {
+                tlsConnection.downloadMessages(a);
+
                 if(params.paramN)
                     cout << "Bylo staženo " + to_string(a) + " nových zpráv!" << endl;
                 else
                     cout << "Bylo staženo " + to_string(a) + " zpráv!" << endl;
             }
-            else if (tlsConnection.deleteMessages(a))
+            else {
+                tlsConnection.deleteMessages(a);
                 cout << to_string(a) + " starých zpráv bylo smazáno!" << endl;
+            }
 
             tlsConnection.cleanUp();
         }
@@ -33,8 +37,9 @@ int main(int argc, char *argv[]) {
             Connection connect = Connection(params);
 
             connect.authenticate();
-            if (connect.downloadMessages(a))
+            if (!params.paramD)
             {
+                connect.downloadMessages(a);
                 if (params.paramN)
                     cout << "Bylo staženo " + to_string(a) + " nových zpráv!" << endl;
                 else

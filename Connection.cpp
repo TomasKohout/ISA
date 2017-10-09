@@ -40,7 +40,6 @@ void Connection::sendCommand(string cmd) {
         if (SSL_write(this->ssl, cmd.c_str(), static_cast<int>(cmd.size())) < 0)
             throw ServerError("Can not write into socket", "Server closed the connection");
     }
-
 }
 
 ssize_t Connection::readSock(char *buff, int size){

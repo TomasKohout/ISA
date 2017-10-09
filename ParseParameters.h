@@ -9,7 +9,7 @@
 #include <cstring>
 #include <unistd.h>
 #include "FileManipulator.h"
-#include "Connection.h"
+#include "ConnectionInterface.h"
 
 #define ERR 42
 #define OK 0
@@ -24,21 +24,23 @@ class ParseParameters{
 public:
     string address = "";
     string portNum = "110";
-    bool paramT = false;    //pop3s
-    bool paramS = false;    //STLS
     string paramFileC = ""; //certfile
     string paramDirC = "";  //dir with cerfiles
-    //if not SSL_CTX_set_default_verify_paths()
-    bool paramD = false;    //delete messages
-    bool paramN = false;    //work with new messages
     string USER;            //user name
     string PASS;            //user password
     string paramA = "";     //auth file
     string paramO = "";     //out dir
+
+    bool paramT = false;    //pop3s
+    bool paramS = false;    //STLS
+    bool paramD = false;    //delete messages
+    bool paramN = false;    //work with new messages
+
     FileManipulator manipulate;
 
 public:
     ParseParameters();
+
     void parse(int argc, char *argv[]);
 
     class BadArgumentError;

@@ -2,52 +2,55 @@
 #define MAIN
 
 #include "ParseParameters.h"
-#include <string>
-#include <iostream>
 #include "Connection.h"
-#include "ParseResponds.h"
+#include "TLSConnection.h"
 
 using namespace std;
 int main(int argc, char *argv[]) {
+    int a;
     ParseParameters params = ParseParameters();
     try {
         params.parse(argc, argv);
-    }
-    catch (Error& e ){
-        cerr << e.what()<<endl;
-        exit(ERR);
-    }
 
-    if (params.paramT)
-    {
+        if (params.paramT)
+        {
+            TLSConnection tlsConnection = TLSConnection(params);
+            tlsConnection.authenticate();
+            if (tlsConnection.downloadMessages(a))
+            {
+                if(params.paramN)
+                    cout << "Bylo staženo " + to_string(a) + " nových zpráv!" << endl;
+                else
+                    cout << "Bylo staženo " + to_string(a) + " zpráv!" << endl;
+            }
+            else if (tlsConnection.deleteMessages(a))
+                cout << to_string(a) + " starých zpráv bylo smazáno!" << endl;
 
-    }
-    else
-    {
-        Connection connect = Connection(params);
-
-        try {
-            int a;
+            tlsConnection.cleanUp();
+        }
+        else
+        {
+            Connection connect = Connection(params);
 
             connect.authenticate();
             if (connect.downloadMessages(a))
             {
-                cout << "Bylo staženo " + to_string(a) + " zpráv!" << endl;
+                if (params.paramN)
+                    cout << "Bylo staženo " + to_string(a) + " nových zpráv!" << endl;
+                else
+                    cout << "Bylo staženo " + to_string(a) + " zpráv!" << endl;
             }
-            else
-                return 1;
+            else if (connect.deleteMessages(a))
+                cout << to_string(a) + " starých zpráv bylo smazáno!" << endl;
 
+            connect.cleanUp();
         }
-        catch (const Error &error)
-        {
-            cerr << error.what() << endl;
-        }
-
-
     }
-
-
-
+    catch (Error& e )
+    {
+        cerr << e.what()<<endl;
+        exit(ERR);
+    }
     return 0;
 }
 

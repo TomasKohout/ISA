@@ -2,12 +2,15 @@
 // Created by tom on 30.9.17.
 //
 
-#include <sys/stat.h>
-#include <fstream>
-#include <iostream>
-#include <vector>
 #include "FileManipulator.h"
-
+/**
+ * Checks if param path is really a path.
+ * @var FI 0
+ * @var FO 1
+ * @var NOTH 2
+ * @param path
+ * @return
+ */
 int FileManipulator::fileOrFolder(string path) {
     struct stat s;
 
@@ -31,10 +34,11 @@ FileManipulator::FileManipulator() {
 
 }
 
-void FileManipulator::openFileRead(string path) {
-    readFile.open(path, ios::out);
-}
-
+/**
+ * Read from auth file and gets user name and password.
+ * @param path Path to an auth file.
+ * @return vector with USER and PASS data
+ */
 std::vector<string> FileManipulator::readAuthFile(string path) {
     ifstream authFile (path);
     string line, word;
@@ -44,10 +48,10 @@ std::vector<string> FileManipulator::readAuthFile(string path) {
     if (authFile.is_open()) {
         while (authFile >> word) {
             switch (count) {
-                case 2:
+                case 2: //second word is always user name
                     arr.push_back(word);
                     break;
-                case 5:
+                case 5: //fifth word is always password
                     arr.push_back(word);
                     break;
                 default:
@@ -57,7 +61,7 @@ std::vector<string> FileManipulator::readAuthFile(string path) {
         }
     } else
         throw FileIsNotOpenError("authfile", "Bad thing had just happend!");
-    if (count > 6 || count < 6)
+    if (count !=  6) //count have to be equal to 6
     {
         authFile.close();
         throw BadFileFormatError("authfile", "AuthFile has a bad format");

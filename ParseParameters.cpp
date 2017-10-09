@@ -1,20 +1,21 @@
 //
 // Created by tom on 30.9.17.
 //
-#include <cstring>
-#include <netdb.h>
-#include <locale>
-#include <sys/stat.h>
 #include "ParseParameters.h"
-#include <string>
-#include <iostream>
 
 using namespace std;
-
+/**
+ * Constructor
+ * It only creates FileManipulator object
+ */
 ParseParameters::ParseParameters() {
     this->manipulate = FileManipulator();
 }
-
+/**
+ * This method is used for processing program arguments.
+ * @param argc Count of arguments
+ * @param argv String array with options
+ */
 void ParseParameters::parse(int argc, char **argv) {
 
     for (int i = 1; i < argc; i++) {
@@ -47,12 +48,19 @@ void ParseParameters::parse(int argc, char **argv) {
     areMandatoryArgsSeted();
 }
 
-
+/**
+ * Method that checks if all necessary arguments are setted.
+ */
 void ParseParameters::areMandatoryArgsSeted() {
     if (address.empty() || paramA.empty() || paramO.empty())
         throw MandatoryArgsError("One or many of the mandatory parameters are missing", "");
 }
 
+/**
+ * Method that checks if str contains only numebers.
+ * @param str String
+ * @return true or false
+ */
 bool ParseParameters::isNumeric(string str) {
     for (string::size_type i = 0; i < portNum.length(); i++) {
         if (!isdigit(portNum[i]))
@@ -60,38 +68,56 @@ bool ParseParameters::isNumeric(string str) {
     }
     return true;
 }
-
+/**
+ * This method is setter for this->address
+ * @param argv string
+ */
 void ParseParameters::setAddress(char *argv) {
         if (string(argv).find('.') == string::npos)
             throw BadArgumentError("Bad argumet", string(argv));
 
-        if ((Connection::hostToIp(string(argv))) == 0)
+        if ((ConnectionInterface::hostToIp(string(argv))) == 0)
             address = string(argv);
         else
             throw BadArgumentError(string(argv), "This host can not be reached");
 
 
 }
-
+/**
+ * This method is setter for this->portNum
+ * @param argv string
+ */
 void ParseParameters::setPortNum(char *argv) {
     portNum = string(argv);
     if (!isNumeric(portNum))
         throw BadPortError(portNum,"Try again");
 }
 
+/**
+ * This method sets paramT and validate that paramS is not set.
+ * Also set this->portNum with value of 995.
+ * If paramS has been set, exception will be thrown.
+ */
 void ParseParameters::setParamT() {
     paramT = true;
     portNum = "995";
     if (paramS)
-        throw TooManyArgsError("-T", "-S is already setted");
+        throw TooManyArgsError("-T", "-S has been already set");
 }
-
+/**
+ * This method sets paramS and validate that paramT is not set.
+ * If paramT has been set, exception will be thrown.
+ */
 void ParseParameters::setParamS() {
     paramS = true;
     if (paramT)
-        throw TooManyArgsError("-S", "-T is already setted");
+        throw TooManyArgsError("-S", "-T has been already set");
 }
-
+/**
+ * Checks if argv is path to a file and sets this->paramFileC.
+ * If argv is not the file, exception will be thrown.
+ * @param argv string
+ */
 void ParseParameters::setParamFileC(char *argv) {
     if(manipulate.fileOrFolder(string(argv)) == FI)
         paramFileC = string(argv);
@@ -99,28 +125,52 @@ void ParseParameters::setParamFileC(char *argv) {
         throw NotFileOrDirError("-c", "not a file");
 }
 
+/**
+ * Checks if argv is path to a directory and sets this->paramDirC.
+ * If it is not a dir, exception will be thrown.
+ * @param argv string
+ */
 void ParseParameters::setParamDirC(char *argv) {
     if (manipulate.fileOrFolder(string(argv)) == FO)
         paramDirC = string(argv);
     else
         throw NotFileOrDirError("-C", "not a directory");
 }
-
+/**
+ * Sets this->paramN.
+ * If this->paramD has been already set, exception will be thrown.
+ */
 void ParseParameters::setParamD() {
+    if (paramN)
+        throw TooManyArgsError("-d", "-n is already setted");
     paramD = true;
 }
-
+/**
+ * Sets this->paramd.
+ * If this->paramN has been already set, exception will be thrown.
+ */
 void ParseParameters::setParamN() {
+    if (paramD)
+        throw TooManyArgsError("-n", "-d is already setted");
     paramN = true;
 }
-
+/**
+ * Checks if argv is path to a directory and sets this->paramDirC.
+ * If argv is not the directory, exception will be thrown.
+ * @param argv string
+ */
 void ParseParameters::setParamO(char *argv) {
     if (manipulate.fileOrFolder(string(argv)) == FO)
         paramO = string(argv);
     else
         throw NotFileOrDirError("-o", "not a directory");
 }
-
+/**
+ * Checks if argv is path to a file.
+ * If argv is path to a file FileManipulator::readAuthFile(string path)
+ * will be called. After that this->USER and this->PASS is set.
+ * @param argv
+ */
 void ParseParameters::getUserAndPass(char *argv) {
     vector<string> vec;
 
@@ -129,18 +179,9 @@ void ParseParameters::getUserAndPass(char *argv) {
     else
         throw NotFileOrDirError("-a", "not a file");
 
-    try {
-        vec = manipulate.readAuthFile(paramA);
-        USER = vec[0];
-        PASS = vec[1];
-    }
-    catch (Error &error)
-    {
-
-    }
-
-
-
+    vec = manipulate.readAuthFile(paramA);
+    USER = vec[0];
+    PASS = vec[1];
 }
 
 

@@ -8,6 +8,10 @@
 #include <string>
 #include <fstream>
 #include <vector>
+#include <sys/stat.h>
+#include <fstream>
+#include <iostream>
+#include <vector>
 #include "Error.h"
 
 #define FI 0
@@ -25,10 +29,6 @@ private:
 public:
     FileManipulator();
     int fileOrFolder(string path);
-    void openFileRead(string path);
-    void openFileWrite(string path);
-    string readOneLine();
-    void writeToFile();
     std::vector<string> readAuthFile(string path);
 
     class BadFileFormatError;
@@ -40,7 +40,6 @@ public:
     BadFileFormatError(string const &wha, string const &wh)
     {
         msg = wha + " : " + wh;
-
     }
 };
 
@@ -49,7 +48,6 @@ public:
     FileIsNotOpenError(string const &wha, string const &wh)
     {
         msg = wha + " : " + wh;
-
     }
 };
 

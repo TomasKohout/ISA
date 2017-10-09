@@ -6,6 +6,9 @@
 #define ISA_MASTER_STRUCTURES_H
 
 #include <string>
+/**
+ * structure that store informations about one email
+ */
 struct msgData{
     std::string uidl;
     std::string id;

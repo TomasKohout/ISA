@@ -73,7 +73,7 @@ bool ParseParameters::isNumeric(string str) {
  * @param argv string
  */
 void ParseParameters::setAddress(char *argv) {
-        if (string(argv).find('.') == string::npos)
+        if (string(argv).find('.') == string::npos && string(argv).find(':') == string::npos)
             throw BadArgumentError("Bad argumet", string(argv));
 
         if ((ConnectionInterface::hostToIp(string(argv))) == 0)

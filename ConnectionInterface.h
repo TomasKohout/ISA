@@ -12,6 +12,7 @@
 #include <unistd.h>
 #include <openssl/ssl.h>
 #include <openssl/err.h>
+#include <openssl/bio.h>
 #include "Error.h"
 #include <openssl/ossl_typ.h>
 #include <vector>
@@ -35,6 +36,7 @@ protected:
     bool stupidFlag = false;
 
     int sockfd;
+    BIO *bio;
     ssl_st *ssl;
     SSL_CTX *sslCtx;
     SSL *cssl;

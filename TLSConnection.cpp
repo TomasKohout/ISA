@@ -31,6 +31,7 @@ TLSConnection::~TLSConnection() {
  */
 void TLSConnection::establishConnection() {
     this->initSSL();
+    validResponse();
 }
 
 /**
@@ -41,7 +42,7 @@ void TLSConnection::establishConnection() {
  * @return count of read bytes
  */
 ssize_t TLSConnection::readSock(char *buff, int size) {
-    int byte;
+    ssize_t byte;
     if ((byte = SSL_read(this->ssl, buff, size)) < 0)
         throw ServerError("Reading from socket is inaccesible.", "Server might be down");
     return byte;

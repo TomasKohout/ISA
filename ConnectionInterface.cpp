@@ -249,17 +249,16 @@ void ConnectionInterface::initSSL() {
     this->sslCtx = SSL_CTX_new(SSLv23_client_method());
     SSL_CTX_set_options(this->sslCtx, SSL_OP_SINGLE_DH_USE);
 
-    this->ssl = SSL_new(this->sslCtx);
-
     if (this->paramFileC.empty() && this->paramDirC.empty())
         retSSLCert = SSL_CTX_set_default_verify_paths(this->sslCtx);
     else
         retSSLCert = SSL_CTX_load_verify_locations(this->sslCtx, this->paramFileC.c_str(), this->paramDirC.c_str());
 
-    if (retSSLCert == 0)
+    ERR_print_errors_fp(stdout);
+    if (retSSLCert != 1)
         throw ClientError("SSL certs", "No certificates");
 
-    SSL_set_mode(this->ssl, SSL_MODE_AUTO_RETRY);
+    this->ssl = SSL_new(this->sslCtx);
     SSL_set_fd(this->ssl, this->sockfd);
 
     if (SSL_connect(this->ssl) != 1)
@@ -287,10 +286,11 @@ void ConnectionInterface::destSSL() {
 }
 
 void ConnectionInterface::shutSSL() {
-    close(this->sockfd);
-    SSL_CTX_free(this->sslCtx);
     SSL_shutdown(this->ssl);
+    close(this->sockfd);
     SSL_free(this->ssl);
+    SSL_CTX_free(this->sslCtx);
+
 }
 
 

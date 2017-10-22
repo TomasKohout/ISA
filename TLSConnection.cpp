@@ -15,6 +15,12 @@ TLSConnection::TLSConnection(const ParseParameters &parse) {
     this->PASS    =   parse.PASS;
     this->paramFileC = parse.paramFileC;
     this->paramDirC  = parse.paramDirC;
+
+    if (paramO.back() == '/')
+        this->cachePath += paramO + ".cache/file";
+    else
+        this->cachePath += paramO + "/.cache/file";
+
 }
 /**
  * For more information go to ConnectionInterface::shutSSL() and

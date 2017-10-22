@@ -16,11 +16,16 @@
 #include "Error.h"
 #include <openssl/ossl_typ.h>
 #include <vector>
+#include <regex>
+#include <functional>
 
 #include "structures.h"
 using namespace std;
 class ConnectionInterface {
 protected:
+    hash<string> hashFunc;
+
+    string cachePath = "";
     string address = "";
     string portNum = "";
     string USER;            //user name
@@ -61,10 +66,8 @@ protected:
     virtual ssize_t readSock(char *buff, int size) = 0;
     virtual void sendCommand(std::string cmd) = 0;
 
-    vector<msgData> getDelMsg();
-    vector<msgData> getUIDLs();
-    vector<msgData> getOnlyNew();
-    vector<msgData> parseMultiline(string multLine);
+    vector<int> getDelMsg();
+    vector<int> getOnlyNew();
 
     void createSock();
     void initSSL();
@@ -74,6 +77,8 @@ protected:
     bool validResponse();
     string recvLine(int &size);
     string recvMessage();
+    int getCountOfMessages();
+    int getStartNameNumber();
 };
 
 

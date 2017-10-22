@@ -17,13 +17,10 @@ string ConnectionInterface::recvMessage() {
         tmp = recvLine(size);
 
         if (tmp == ".\r\n" || size == 0)
-        {
             break;
-        }
         else
-        {
             ret += tmp;
-        }
+
         size = 0;
     }
     return ret;
@@ -39,7 +36,7 @@ string ConnectionInterface::recvLine(int &size) {
     while(readSock(buff, sizeof(buff))){
         ret += buff;
         size++;
-        if(ret.back() == '\n' && ret[ret.length() - 2] == '\r')
+        if(ret[ret.length() - 2] == '\r' && ret.back() == '\n')
         {
             break;
         }
@@ -63,7 +60,6 @@ bool ConnectionInterface::validResponse() {
  */
 bool ConnectionInterface::authenticate() {
     establishConnection();
-    int a;
     sendCommand("USER "+ USER );
 
     if(validResponse())
@@ -84,94 +80,113 @@ bool ConnectionInterface::authenticate() {
  * @return true
  */
 bool ConnectionInterface::downloadMessages(int &count) {
-    int a;
-    vector<msgData> arr;
+    vector<int> arr;
+    int name = getStartNameNumber();
+    string respond;
+    fstream cachefile(cachePath, ios::app);
     if (paramN)
         arr = getOnlyNew();
     else{
-        sendCommand("UIDL");
-        arr = parseMultiline(recvMessage());
+        int tmp = getCountOfMessages();
+        for (int i = 0; i < tmp; i++) {
+            arr.push_back(i+1);
+        }
+    }
+    ssize_t hash;
+
+    for (int j = 0; j < arr.size(); j++) {
+        sendCommand("RETR " + to_string(arr[j]));
+        if (this->validResponse()) {
+            hash = hashFunc((respond = recvMessage()));
+            cachefile << hash << endl;
+
+            if (paramO.back() == '/')
+            {
+                ofstream outfile(paramO + to_string(name+j+1));
+                outfile << respond;
+                outfile.close();
+            } else{
+                ofstream outfile(paramO + "/" + to_string(name+j+1));
+                outfile << respond;
+                outfile.close();
+            }
+        }
+
     }
 
-    for (int i = 0; i < arr.size(); i++) {
-        ofstream outfile(paramO + "/" + arr[i].uidl); //every file containing message is named by uidl
-        sendCommand("RETR " + arr[i].id); //send command for downloading specific message
-        if(this->validResponse()) //read one line of respond, server info
-        {
-            outfile << recvMessage(); //reads message and save it to a file
-            outfile.close();
-        } else
-            throw ServerError("Download Message", "I do not know");
-
-    }
-    count = static_cast<int>(arr.size());
-    return true;
+     count = static_cast<int>(arr.size());
+     return true;
 }
-/**
- * Gets names of already downladed messages using popen and ls command.
- * @return vector of msgData, msgData.id is empty string
- */
-vector<msgData> ConnectionInterface::getUIDLs(){
-    vector<msgData> ret;
-    string searchStr = "ls " + paramO;
-    char fileName[200];
-    string fileNames;
-    FILE *lsResult;
-    lsResult = popen(searchStr.c_str(), "r");
-
-    while(fgets(fileName, 200, lsResult)) //reads from pipe returned by popen
-    {
-        fileNames += fileName;
-    }
-    pclose(lsResult); //close pipe
-
-    stringstream stream(fileNames);
-    string name;
-    int i = 0;
-    while (stream >> name)
-    {
-        ret.push_back(msgData()); //add structure to vector
-        ret[i].id = "";
-        ret[i].uidl = name; //set uidl
-        i++;
-    }
-    return ret;
-}
-
 /**
  *
  * @return
  */
-vector<msgData> ConnectionInterface::getOnlyNew() {
-    vector<msgData> uidlResult;
-    sendCommand("UIDL");
+vector<int> ConnectionInterface::getOnlyNew() {
+    vector<long> hash;
+    vector<int> ret;
+    int count = getCountOfMessages();
+    ssize_t hashToCompare;
 
-    uidlResult = parseMultiline(recvMessage());
-    vector<msgData> localMsgs = getUIDLs();
-    for (int j = 0; j < localMsgs.size(); j++) {
-        for (int i = 0; i < uidlResult.size(); i++) {
-            if (uidlResult[i].uidl == localMsgs[j].uidl)
-                uidlResult.erase(uidlResult.begin() + i);
+    ifstream hashFile(this->cachePath);
+    long temp;
+    while (hashFile >> temp)
+        hash.push_back(temp);
+    bool notNew = true;
+
+    for (int k = 0; k < count; k++) {
+        sendCommand("RETR " + to_string(k+1));
+        if (validResponse()){
+            hashToCompare = hashFunc(recvMessage());
+            for (int i = 0; i < hash.size(); i++) {
+                if (hash[i] == hashToCompare)
+                {
+                    notNew = false;
+                    break;
+                }
+            }
+
+            if (notNew)
+                ret.push_back(k+1);
+            else
+                notNew = true;
         }
     }
 
-    return uidlResult;
+
+    return ret;
 }
 
-vector<msgData> ConnectionInterface::getDelMsg() {
-    vector<msgData> uidlResult;
-    sendCommand("UIDL");
-    uidlResult = parseMultiline(recvMessage());
-    vector<msgData> localMsgs = getUIDLs();
-    for (int j = 0; j < localMsgs.size(); j++) {
-        for (int i = 0; i < uidlResult.size(); i++) {
-            if (uidlResult[i].uidl == localMsgs[j].uidl)
-                localMsgs[j].id = uidlResult[i].id;
+vector<int> ConnectionInterface::getDelMsg() {
+    vector<long> hash;
+    vector<int> ret;
+    ssize_t hashToCompare;
+
+    ifstream hashFile(this->cachePath);
+    long temp;
+    while (hashFile >> temp)
+        hash.push_back(temp);
+    bool del = false;
+
+    for (int i = 0; i < hash.size(); i++) {
+        sendCommand("RETR " + to_string(i+1));
+        if (validResponse()){
+            hashToCompare = hashFunc(recvMessage());
+            for (int k = 0; k < hash.size(); k++) {
+                if (hash[k] == hashToCompare)
+                {
+                    del = true;
+                    break;
+                }
+            }
+
+            if (del)
+                ret.push_back(i+1);
+            else
+                del = false;
         }
-        if(localMsgs[j].id.empty())
-            localMsgs.erase(localMsgs.begin() + j--);
     }
-    return localMsgs;
+
+    return ret;
 }
 
 int ConnectionInterface::hostToIp(string host) {
@@ -229,16 +244,14 @@ void ConnectionInterface::initSSL() {
     if (paramS)
     {
         if (!this->validResponse())
-        {
             throw ServerError("Error", "Server respond is not OK");
-        }
+
         string tmp = "STLS\r\n";
         send(this->sockfd, tmp.c_str(), tmp.length(), 0);
 
         if (!this->validResponse())
-        {
             throw ServerError("STLS", "Server is not supporting STLS commnad");
-        }
+
         this->stupidFlag = true;    //this flag is as stupid as writer of this code
                                     //necessary for validResponse()
     }
@@ -251,10 +264,13 @@ void ConnectionInterface::initSSL() {
 
     if (this->paramFileC.empty() && this->paramDirC.empty())
         retSSLCert = SSL_CTX_set_default_verify_paths(this->sslCtx);
-    else
+    else if (!this->paramFileC.empty() && !this->paramDirC.empty())
         retSSLCert = SSL_CTX_load_verify_locations(this->sslCtx, this->paramFileC.c_str(), this->paramDirC.c_str());
+    else if (this->paramFileC.empty())
+        retSSLCert = SSL_CTX_load_verify_locations(this->sslCtx, NULL, this->paramDirC.c_str());
+    else if (this->paramDirC.empty())
+        retSSLCert = SSL_CTX_load_verify_locations(this->sslCtx, this->paramFileC.c_str(), NULL);
 
-    ERR_print_errors_fp(stdout);
     if (retSSLCert != 1)
         throw ClientError("SSL certs", "No certificates");
 
@@ -262,18 +278,10 @@ void ConnectionInterface::initSSL() {
     SSL_set_fd(this->ssl, this->sockfd);
 
     if (SSL_connect(this->ssl) != 1)
-    {
         throw ServerError("SSL_connect", "Can not initialize a connection");
-    }
-
-    this->cert = SSL_get_peer_certificate(this->ssl);
-
-
-    if (this->cert)
-        X509_free(this->cert);
-    else
-        throw ServerError("Cert", "Certificate is not OK");
-
+    X509 * cert = SSL_get_peer_certificate(this->ssl);
+    if (cert == NULL)
+        throw ServerError("Cert", "Server does not send any certificate");
     retSSLCert = SSL_get_verify_result(this->ssl);
     if(X509_V_OK != retSSLCert)
         throw ServerError("Cert", "Certificate is not OK");
@@ -293,36 +301,13 @@ void ConnectionInterface::shutSSL() {
 
 }
 
-
-vector<msgData> ConnectionInterface::parseMultiline(string multLine) {
-    vector<msgData> array;
-    size_t count = multLine.find_first_of('\n');
-
-    for (int i = 0; i <= count  ; i++) {
-        multLine.erase(0, 1);
-    }
-
-    istringstream stream(multLine);
-    string uidl;
-    string id;
-    int i = 0;
-    for (string word; stream >> id, stream >> uidl ; i++) {
-        if (id.compare(".") != 0 || uidl.compare(".") != 0) {
-            array.push_back(msgData());
-            array[i].id = id;
-            array[i].uidl = uidl;
-        }
-    }
-    return array;
-}
-
 bool ConnectionInterface::deleteMessages(int &count) {
-    vector<msgData> msg = getDelMsg();
+    vector<int> msg = getDelMsg();
 
     for (int i = 0; i < msg.size(); i++) {
-        sendCommand("DELE " + msg[i].id);
+        sendCommand("DELE " + to_string(msg[i]));
         if (!validResponse())
-            throw ServerError("DEL", "Can not delete this email with ID: " + msg[i].id + " and UIDL: " + msg[i].uidl);
+            throw ServerError("DEL", "Can not delete this email with ID: " + msg[i]);
     }
     count = msg.size();
     return true;
@@ -335,5 +320,43 @@ void ConnectionInterface::cleanUp() {
     sendCommand("QUIT");
     validResponse();
 }
+
+int ConnectionInterface::getCountOfMessages() {
+    int a;
+    sendCommand("STAT");
+    string respond = recvLine(a);
+    respond.erase(0,4);
+
+    int i = static_cast<int>(respond.find_first_of(" "));
+    respond.erase(i,respond.size());
+
+    return atoi(respond.c_str());
+}
+
+int ConnectionInterface::getStartNameNumber() {
+    string searchStr = "ls " + paramO;
+    char fileName[200];
+    string fileNames;
+    FILE *lsResult;
+    lsResult = popen(searchStr.c_str(), "r");
+
+    while(fgets(fileName, 200, lsResult)) //reads from pipe returned by popen
+    {
+        fileNames += fileName;
+    }
+    pclose(lsResult); //close pipe
+
+    int number = 0;
+    int temp;
+    stringstream stream(fileNames);
+    while (stream >> temp)
+    {
+        if (temp > number)
+            number = temp;
+    }
+
+    return number;
+}
+
 
 

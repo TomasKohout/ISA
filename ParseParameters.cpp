@@ -25,9 +25,9 @@ void ParseParameters::parse(int argc, char **argv) {
             setParamT();
         else if (strcmp(argv[i] ,"-S") == 0)
             setParamS();
-        else if (strcmp(argv[i] ,"-c" ) == 0 && (paramT || paramS))
+        else if (strcmp(argv[i] ,"-c" ) == 0)
             setParamFileC(argv[++i]);
-        else if (strcmp(argv[i] ,"-C") == 0 && (paramT || paramS))
+        else if (strcmp(argv[i] ,"-C") == 0)
             setParamDirC(argv[++i]);
         else if (strcmp(argv[i] , "-d") == 0)
             setParamD();
@@ -46,13 +46,19 @@ void ParseParameters::parse(int argc, char **argv) {
         }
     }
     areMandatoryArgsSeted();
+    if (paramO.back() == '/')
+        mkdir((paramO + ".cache").c_str(), 0777);
+    else
+        mkdir((paramO + "/.cache").c_str(), 0777);
+
+
 }
 
 /**
  * Method that checks if all necessary arguments are setted.
  */
 void ParseParameters::areMandatoryArgsSeted() {
-    if (address.empty() || paramA.empty() || paramO.empty())
+    if (address.empty() || paramA.empty() || paramO.empty() || (paramT && paramS) || (!paramFileC.empty() && !paramDirC.empty()))
         throw MandatoryArgsError("One or many of the mandatory parameters are missing", "");
 }
 

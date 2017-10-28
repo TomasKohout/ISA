@@ -13,7 +13,7 @@
 #include "Error.h"
 #include "ParseParameters.h"
 #include "ConnectionInterface.h"
-#include "structures.h"
+
 
 
 using namespace std;

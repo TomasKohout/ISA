@@ -31,6 +31,7 @@ public:
     string paramA = "";     //auth file
     string paramO = "";     //out dir
 
+    bool help = false;
     bool paramT = false;    //pop3s
     bool paramS = false;    //STLS
     bool paramD = false;    //delete messages
@@ -45,7 +46,6 @@ public:
 
     class BadArgumentError;
     class NotFileOrDirError;
-    class MandatoryArgsError;
     class BadPortError;
     class TooManyArgsError;
 
@@ -78,12 +78,6 @@ public:
     }
 };
 
-class ParseParameters::MandatoryArgsError : public Error{
-public:
-    MandatoryArgsError(string const &wha, string const &wh) {
-        msg = wha +  wh;
-    }
-};
 class ParseParameters::BadPortError : public Error{
 public:
     BadPortError(string const &wha, string const &wh) {

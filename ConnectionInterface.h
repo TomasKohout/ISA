@@ -19,7 +19,7 @@
 #include <regex>
 #include <functional>
 
-#include "structures.h"
+
 using namespace std;
 class ConnectionInterface {
 protected:
@@ -41,12 +41,8 @@ protected:
     bool stupidFlag = false;
 
     int sockfd;
-    BIO *bio;
-    ssl_st *ssl;
-    SSL_CTX *sslCtx;
-    SSL *cssl;
-    X509 *cert;
-    X509_NAME *name;
+    ssl_st *ssl = NULL;
+    SSL_CTX *sslCtx = NULL;
 
 public:
     virtual void establishConnection()= 0;
@@ -67,7 +63,7 @@ protected:
     virtual void sendCommand(std::string cmd) = 0;
 
     vector<int> getDelMsg();
-    vector<int> getOnlyNew();
+    vector<int> getOnlyNew(int count);
 
     void createSock();
     void initSSL();

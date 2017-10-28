@@ -6,13 +6,33 @@
 #include "TLSConnection.h"
 
 using namespace std;
+
+void printHelp(){
+
+
+}
+
 int main(int argc, char *argv[]) {
     int a;
     string cachePath = "";
     ParseParameters params = ParseParameters();
-
     try {
         params.parse(argc, argv);
+    }
+    catch (Error& error)
+    {
+        printHelp();
+        return 0;
+    }
+
+    if (params.help)
+    {
+        printHelp();
+        return 0;
+    }
+
+    try {
+
 
         if (params.paramT)
         {

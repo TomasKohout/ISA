@@ -20,7 +20,7 @@ void ParseParameters::parse(int argc, char **argv) {
 
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i] , "-p") == 0)
-            setPortNum(argv[i]);
+            setPortNum(argv[++i]);
         else if (strcmp(argv[i] ,"-T") == 0)
             setParamT();
         else if (strcmp(argv[i] ,"-S") == 0)
@@ -37,6 +37,11 @@ void ParseParameters::parse(int argc, char **argv) {
             getUserAndPass(argv[++i]);
         else if (strcmp(argv[i], "-o") == 0)
             setParamO(argv[++i]);
+        else if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0)
+        {
+            help = true;
+            return;
+        }
         else{
             if (address.empty()) {
                 setAddress(argv[i]);
@@ -59,7 +64,7 @@ void ParseParameters::parse(int argc, char **argv) {
  */
 void ParseParameters::areMandatoryArgsSeted() {
     if (address.empty() || paramA.empty() || paramO.empty() || (paramT && paramS) || (!paramFileC.empty() && !paramDirC.empty()))
-        throw MandatoryArgsError("One or many of the mandatory parameters are missing", "");
+        throw BadArgumentError("Bad arguments", "Not allowed argument or badly tipped one.");
 }
 
 /**

@@ -50,6 +50,7 @@ void Connection::sendCommand(string cmd) {
 ssize_t Connection::readSock(char *buff, int size){
 
     int byte;
+
     if (this->paramS && this->stupidFlag)
     {
         byte = SSL_read(this->ssl, buff, size);

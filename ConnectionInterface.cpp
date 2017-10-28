@@ -10,14 +10,22 @@
 string ConnectionInterface::recvMessage() {
     string ret = "";
     string tmp = "";
+    string substr = "";
     int size = 0;
     while(true)
     {
         tmp.clear();
         tmp = recvLine(size);
 
+
         if (tmp == ".\r\n" || size == 0)
+        {
             break;
+        }
+        else if(tmp.front() == '.'){
+            tmp.erase(0,1);
+            ret += tmp;
+        }
         else
             ret += tmp;
 
@@ -33,8 +41,10 @@ string ConnectionInterface::recvMessage() {
 string ConnectionInterface::recvLine(int &size) {
     char buff[1];
     string ret = "";
+    size = 0;
     while(readSock(buff, sizeof(buff))){
         ret += buff;
+
         size++;
         if(ret[ret.length() - 2] == '\r' && ret.back() == '\n')
         {
@@ -82,19 +92,15 @@ bool ConnectionInterface::authenticate() {
 bool ConnectionInterface::downloadMessages(int &count) {
     vector<int> arr;
     int name = getStartNameNumber();
+    int count_of_messages = getCountOfMessages();
     string respond;
     fstream cachefile(cachePath, ios::app);
-    if (paramN)
-        arr = getOnlyNew();
-    else{
-        int tmp = getCountOfMessages();
-        for (int i = 0; i < tmp; i++) {
-            arr.push_back(i+1);
-        }
-    }
-    ssize_t hash;
 
-    for (int j = 0; j < arr.size(); j++) {
+    arr = getOnlyNew(count_of_messages);
+
+    ssize_t hash;
+    int j;
+    for (j = 0; j < arr.size(); j++) {
         sendCommand("RETR " + to_string(arr[j]));
         if (this->validResponse()) {
             hash = hashFunc((respond = recvMessage()));
@@ -114,17 +120,22 @@ bool ConnectionInterface::downloadMessages(int &count) {
 
     }
 
-     count = static_cast<int>(arr.size());
-     return true;
+    cachefile.close();
+
+    if (paramN)
+        count = arr.size();
+    else
+        count = count_of_messages;
+    return true;
 }
 /**
  *
  * @return
  */
-vector<int> ConnectionInterface::getOnlyNew() {
+vector<int> ConnectionInterface::getOnlyNew(int count) {
     vector<long> hash;
     vector<int> ret;
-    int count = getCountOfMessages();
+
     ssize_t hashToCompare;
 
     ifstream hashFile(this->cachePath);
@@ -219,11 +230,9 @@ void ConnectionInterface::createSock() {
     for(p = serverinfo; p != NULL; p = p->ai_next) {
         if ((this->sockfd = socket(p->ai_family, p->ai_socktype,
                                    p->ai_protocol)) == -1) {
-            perror("socket");
             continue;
         }
         if (connect(this->sockfd, p->ai_addr, p->ai_addrlen) == -1) {
-            perror("connect");
             close(this->sockfd);
             continue;
         }
@@ -234,6 +243,7 @@ void ConnectionInterface::createSock() {
         freeaddrinfo(serverinfo);
         throw FailedToConnect("Failed to connect", "Try again");
     }
+
     freeaddrinfo(serverinfo);
 }
 
@@ -294,10 +304,13 @@ void ConnectionInterface::destSSL() {
 }
 
 void ConnectionInterface::shutSSL() {
-    SSL_shutdown(this->ssl);
+    if (this->ssl != NULL)
+        SSL_shutdown(this->ssl);
     close(this->sockfd);
-    SSL_free(this->ssl);
-    SSL_CTX_free(this->sslCtx);
+    if (this->ssl != NULL)
+        SSL_free(this->ssl);
+    if (this->sslCtx != NULL)
+        SSL_CTX_free(this->sslCtx);
 
 }
 
@@ -357,6 +370,7 @@ int ConnectionInterface::getStartNameNumber() {
 
     return number;
 }
+
 
 
 

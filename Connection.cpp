@@ -2,7 +2,10 @@
 // Created by tom on 30.9.17.
 //
 #include "Connection.h"
-
+/**
+ * Constructor. Set up atributs.
+ * @param parse ParseParameters object
+ */
 Connection::Connection(const ParseParameters &parse) {
     this->address =   parse.address;
     this->portNum =   parse.portNum;
@@ -21,7 +24,10 @@ Connection::Connection(const ParseParameters &parse) {
     else
         this->cachePath += paramO + "/.cache/file";
 }
-
+/**
+ * This method is used for calling initSSL().
+ * For more information go to ConnectionInterface::initSSL().
+ */
 void Connection::establishConnection() {
     this->createSock();
 
@@ -31,6 +37,12 @@ void Connection::establishConnection() {
         throw ServerError("Error" , "Server is broken?");
 }
 
+/**
+ * This is implemented virtual method from ConnectionInterface.
+ * It is used for sending data.
+ *
+ * @param cmd std::string without \r\n
+ */
 void Connection::sendCommand(string cmd) {
     cmd += "\r\n";
     if(!this->paramS)
@@ -47,6 +59,13 @@ void Connection::sendCommand(string cmd) {
     }
 }
 
+/**
+ * This is implemented virtual method from ConnectionInterface.
+ * It is used for reading data from socket usualy by one byte.
+ * @param buff array of chars
+ * @param size of buff
+ * @return count of read bytes
+ */
 ssize_t Connection::readSock(char *buff, int size){
 
     int byte;
@@ -68,6 +87,9 @@ ssize_t Connection::readSock(char *buff, int size){
     return byte;
 }
 
+/**
+ * Destructor.
+ */
 Connection::~Connection() {
     if (this->paramS)
     {

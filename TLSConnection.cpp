@@ -2,7 +2,10 @@
 // Created by tom on 9.10.17.
 //
 #include "TLSConnection.h"
-
+/**
+ * Constructor. Set up atributs.
+ * @param parse ParseParameters object
+ */
 TLSConnection::TLSConnection(const ParseParameters &parse) {
     this->address =   parse.address;
     this->portNum =   parse.portNum;
@@ -43,7 +46,7 @@ void TLSConnection::establishConnection() {
 /**
  * This is implemented virtual method from ConnectionInterface.
  * It is used for reading data from socket usualy by one byte.
- * @param buff string
+ * @param buff array of chars
  * @param size size of buff
  * @return count of read bytes
  */

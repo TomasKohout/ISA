@@ -86,17 +86,28 @@ bool ConnectionInterface::authenticate() {
 /**
  * Downloads new emails.
  * If paramN (-n) is set, only new emails will be downloaded.
- * @param count of messages
- * @return true
+ * @return count of messages downloaded
  */
-bool ConnectionInterface::downloadMessages(int &count) {
+int ConnectionInterface::downloadMessages() {
     vector<int> arr;
-    int name = getStartNameNumber();
+    int name;
     int count_of_messages = getCountOfMessages();
+    if (paramN)
+    {
+        name = getStartNameNumberForNews();
+        arr = getOnlyNew(count_of_messages);
+    }
+    else
+    {
+        for (int i = 0; i < count_of_messages; i++) {
+            arr.push_back(i+1);
+        }
+        name = checkMessages();
+    }
     string respond;
     fstream cachefile(cachePath, ios::app);
 
-    arr = getOnlyNew(count_of_messages);
+
 
     ssize_t hash;
     int j;
@@ -123,14 +134,14 @@ bool ConnectionInterface::downloadMessages(int &count) {
     cachefile.close();
 
     if (paramN)
-        count = arr.size();
+        return arr.size();
     else
-        count = count_of_messages;
-    return true;
+        return count_of_messages;
 }
 /**
- *
- * @return
+ * Find out what messages are already downloaded and which are not. This function download messages from mailbox
+ * and check if hash of that specific message is in hashfile. If it is not than this message will be downloaded.
+ * @return vector of nubers that are specific to messages
  */
 vector<int> ConnectionInterface::getOnlyNew(int count) {
     vector<long> hash;
@@ -167,6 +178,10 @@ vector<int> ConnectionInterface::getOnlyNew(int count) {
     return ret;
 }
 
+/**
+ * Works similairly like getNewMsg() except that this function is looking for those messages that were already downloaded.
+ * @return vector of nubers that are specific to messages
+ */
 vector<int> ConnectionInterface::getDelMsg() {
     vector<long> hash;
     vector<int> ret;
@@ -177,7 +192,7 @@ vector<int> ConnectionInterface::getDelMsg() {
     while (hashFile >> temp)
         hash.push_back(temp);
     bool del = false;
-
+    hashFile.close();
     for (int i = 0; i < hash.size(); i++) {
         sendCommand("RETR " + to_string(i+1));
         if (validResponse()){
@@ -199,24 +214,9 @@ vector<int> ConnectionInterface::getDelMsg() {
 
     return ret;
 }
-
-int ConnectionInterface::hostToIp(string host) {
-    addrinfo hints;
-    addrinfo *servinfo;
-
-    memset(&hints, 0, sizeof hints);
-    hints.ai_family = AF_UNSPEC; // use AF_INET6 to force IPv6
-    hints.ai_socktype = SOCK_STREAM;
-
-    if ( getaddrinfo( host.c_str() , "110" , &hints , &servinfo) != 0)
-    {
-        return -1;
-    }
-
-    freeaddrinfo(servinfo);
-    return 0;
-}
-
+/**
+ * This method is from http://beej.us/guide/bgnet/output/html/multipage/getaddrinfoman.html.
+ */
 void ConnectionInterface::createSock() {
     addrinfo hints, *serverinfo, *p;
     memset (&hints, 0, sizeof hints);
@@ -246,7 +246,9 @@ void ConnectionInterface::createSock() {
 
     freeaddrinfo(serverinfo);
 }
-
+/**
+ * This method initialize SSL and create socket. It also send STLS command if paramS is present.
+ */
 void ConnectionInterface::initSSL() {
     long retSSLCert;
     createSock();
@@ -272,6 +274,7 @@ void ConnectionInterface::initSSL() {
     this->sslCtx = SSL_CTX_new(SSLv23_client_method());
     SSL_CTX_set_options(this->sslCtx, SSL_OP_SINGLE_DH_USE);
 
+    //sets certificate
     if (this->paramFileC.empty() && this->paramDirC.empty())
         retSSLCert = SSL_CTX_set_default_verify_paths(this->sslCtx);
     else if (!this->paramFileC.empty() && !this->paramDirC.empty())
@@ -289,20 +292,28 @@ void ConnectionInterface::initSSL() {
 
     if (SSL_connect(this->ssl) != 1)
         throw ServerError("SSL_connect", "Can not initialize a connection");
+    //get certificate from server
     X509 * cert = SSL_get_peer_certificate(this->ssl);
     if (cert == NULL)
         throw ServerError("Cert", "Server does not send any certificate");
+    //check if certificate is ok
     retSSLCert = SSL_get_verify_result(this->ssl);
     if(X509_V_OK != retSSLCert)
         throw ServerError("Cert", "Certificate is not OK");
 
 }
 
+/**
+ * Destroy ERR_strings.
+ */
 void ConnectionInterface::destSSL() {
     ERR_free_strings();
     EVP_cleanup();
 }
 
+/**
+ * Closes SSL connection and socket.
+ */
 void ConnectionInterface::shutSSL() {
     if (this->ssl != NULL)
         SSL_shutdown(this->ssl);
@@ -313,17 +324,23 @@ void ConnectionInterface::shutSSL() {
         SSL_CTX_free(this->sslCtx);
 
 }
-
-bool ConnectionInterface::deleteMessages(int &count) {
+/**
+ * Delete all messages in mailbox that are downloaded localy.
+ * @return
+ */
+int ConnectionInterface::deleteMessages() {
     vector<int> msg = getDelMsg();
 
     for (int i = 0; i < msg.size(); i++) {
         sendCommand("DELE " + to_string(msg[i]));
         if (!validResponse())
-            throw ServerError("DEL", "Can not delete this email with ID: " + msg[i]);
+            cerr<<"Can not delete this email with ID: " + msg[i] << endl;
     }
-    count = msg.size();
-    return true;
+
+    fstream cache;
+    cache.open(this->cachePath, ofstream::out | ofstream::trunc);
+    cache.close();
+    return (int) msg.size();
 }
 
 /**
@@ -334,6 +351,10 @@ void ConnectionInterface::cleanUp() {
     validResponse();
 }
 
+/**
+ * Gets count of messages in mailbox.
+ * @return count of messages in mailbox
+ */
 int ConnectionInterface::getCountOfMessages() {
     int a;
     sendCommand("STAT");
@@ -346,7 +367,29 @@ int ConnectionInterface::getCountOfMessages() {
     return atoi(respond.c_str());
 }
 
-int ConnectionInterface::getStartNameNumber() {
+/**
+ * Retrieve name for new messages if -n is setted.
+ * @return name of message
+ */
+int ConnectionInterface::getStartNameNumberForNews() {
+    string fileNames = lsOutDir();
+
+    int number = 0;
+    int temp;
+    stringstream stream(fileNames);
+    while (stream >> temp)
+    {
+        if (temp > number)
+            number = temp;
+    }
+
+    return number;
+}
+/**
+ * This function is like ls in linux.
+ * @return string of filenames.
+ */
+string ConnectionInterface::lsOutDir(){
     string searchStr = "ls " + paramO;
     char fileName[200];
     string fileNames;
@@ -359,16 +402,56 @@ int ConnectionInterface::getStartNameNumber() {
     }
     pclose(lsResult); //close pipe
 
-    int number = 0;
-    int temp;
-    stringstream stream(fileNames);
-    while (stream >> temp)
+    return fileNames;
+}
+
+/**
+ * This method is used for getting the right number for naming messages. Checks message hash against hashes in cachefile.
+ * @return name of new message
+ */
+int ConnectionInterface::checkMessages() {
+    vector<long> hash;
+    vector<int> files;
+    stringstream fileNames(lsOutDir());
+    ifstream cacheFile(cachePath);
+
+    stringstream cacheFileStr;
+    cacheFileStr << cacheFile.rdbuf();
+    long line;
+    int name;
+    while (fileNames >> name)
     {
-        if (temp > number)
-            number = temp;
+        files.push_back(name);
+    }
+    while (cacheFileStr >> line)
+    {
+        hash.push_back(line);
     }
 
-    return number;
+    int startName = 0;
+    bool flag = true;
+    for (int i = 0; i < files.size(); i++) {
+        ifstream message(paramO + to_string(files[i]));
+
+        stringstream tmpStream;
+        tmpStream << message.rdbuf();
+        long msgHash = hashFunc(tmpStream.str());
+        tmpStream.clear();
+        message.close();
+        for (int j = 0; j < hash.size(); j++) {
+            if (msgHash == hash[j])
+                flag = false;
+        }
+        if (flag)
+        {
+            if (files[i] > startName)
+                startName = files[i];
+        }
+    }
+
+
+    return startName;
+
 }
 
 

@@ -49,10 +49,8 @@ public:
     void cleanUp();
 
     bool authenticate();
-    bool downloadMessages(int &count);
-    bool deleteMessages(int &count);
-
-    static int hostToIp(string host);
+    int downloadMessages();
+    int deleteMessages();
 
     class ClientError;
     class FailedToConnect;
@@ -74,7 +72,11 @@ protected:
     string recvLine(int &size);
     string recvMessage();
     int getCountOfMessages();
-    int getStartNameNumber();
+    int getStartNameNumberForNews();
+
+    int checkMessages();
+
+    string lsOutDir();
 };
 
 

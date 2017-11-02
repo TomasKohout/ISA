@@ -87,11 +87,7 @@ void ParseParameters::setAddress(char *argv) {
         if (string(argv).find('.') == string::npos && string(argv).find(':') == string::npos)
             throw BadArgumentError("Bad argumet", string(argv));
 
-        if ((ConnectionInterface::hostToIp(string(argv))) == 0)
-            address = string(argv);
-        else
-            throw BadArgumentError(string(argv), "This host can not be reached");
-
+        address = string(argv);
 
 }
 /**
@@ -152,8 +148,6 @@ void ParseParameters::setParamDirC(char *argv) {
  * If this->paramD has been already set, exception will be thrown.
  */
 void ParseParameters::setParamD() {
-    if (paramN)
-        throw TooManyArgsError("-d", "-n is already setted");
     paramD = true;
 }
 /**
@@ -161,8 +155,6 @@ void ParseParameters::setParamD() {
  * If this->paramN has been already set, exception will be thrown.
  */
 void ParseParameters::setParamN() {
-    if (paramD)
-        throw TooManyArgsError("-n", "-d is already setted");
     paramN = true;
 }
 /**
@@ -172,7 +164,11 @@ void ParseParameters::setParamN() {
  */
 void ParseParameters::setParamO(char *argv) {
     if (manipulate.fileOrFolder(string(argv)) == FO)
+    {
         paramO = string(argv);
+        if (paramO.back() != '/')
+            paramO += "/";
+    }
     else
         throw NotFileOrDirError("-o", "not a directory");
 }

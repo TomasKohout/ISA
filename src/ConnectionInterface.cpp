@@ -1,6 +1,7 @@
 //
 // Created by tom on 9.10.17.
 //
+#include <fcntl.h>
 #include "ConnectionInterface.h"
 /**
  * Receive all multiline responds.
@@ -10,7 +11,6 @@
 string ConnectionInterface::recvMessage() {
     string ret = "";
     string tmp = "";
-    string substr = "";
     int size = 0;
     while(true)
     {
@@ -24,13 +24,14 @@ string ConnectionInterface::recvMessage() {
         }
         else if(tmp.front() == '.'){
             tmp.erase(0,1);
-            ret += tmp;
         }
-        else
-            ret += tmp;
+        ret += tmp;
 
         size = 0;
     }
+
+    ret.pop_back();
+    ret.pop_back();
     return ret;
 }
 /**
@@ -83,30 +84,22 @@ bool ConnectionInterface::authenticate() {
         throw ServerError("PASS", "Wrong password");
 }
 
+
 /**
- * Downloads new emails.
- * If paramN (-n) is set, only new emails will be downloaded.
- * @return count of messages downloaded
+ * This function download and rewrite downloaded messages that have same hash as is in cachePath file.
+ * @param count_of_messages count of actual messages to download
+ * @return count of downloaded messages
  */
-int ConnectionInterface::downloadMessages() {
-    vector<int> arr;
-    int name;
-    int count_of_messages = getCountOfMessages();
-    if (paramN)
-    {
-        name = getStartNameNumberForNews();
-        arr = getOnlyNew(count_of_messages);
-    }
-    else
-    {
-        for (int i = 0; i < count_of_messages; i++) {
-            arr.push_back(i+1);
-        }
-        name = checkMessages();
-    }
+int ConnectionInterface::regularDownload(int count_of_messages)
+{
     string respond;
     fstream cachefile(cachePath, ios::app);
-
+    vector<int> arr;
+    int name;
+    for (int i = 0; i < count_of_messages; i++) {
+        arr.push_back(i+1);
+    }
+    name = checkMessages();
 
 
     ssize_t hash;
@@ -132,88 +125,94 @@ int ConnectionInterface::downloadMessages() {
     }
 
     cachefile.close();
+    return j;
 
+}
+
+/**
+ * Downloads new emails.
+ * If paramN (-n) is set, only new emails will be downloaded.
+ * @return count of messages downloaded
+ */
+int ConnectionInterface::downloadMessages() {
     if (paramN)
-        return arr.size();
+        return getOnlyNew(getCountOfMessages());
     else
-        return count_of_messages;
+        return regularDownload(getCountOfMessages());
 }
 /**
  * Find out what messages are already downloaded and which are not. This function download messages from mailbox
  * and check if hash of that specific message is in hashfile. If it is not than this message will be downloaded.
  * @return vector of nubers that are specific to messages
  */
-vector<int> ConnectionInterface::getOnlyNew(int count) {
+int ConnectionInterface::getOnlyNew(int count) {
     vector<long> hash;
-    vector<int> ret;
-
+    int name = getStartNameNumberForNews();
     ssize_t hashToCompare;
-
-    ifstream hashFile(this->cachePath);
+    string msg;
+    fstream hashFile(this->cachePath);
     long temp;
     while (hashFile >> temp)
         hash.push_back(temp);
-    bool notNew = true;
-
+    bool newMsg = true;
+    int counter = 0;
     for (int k = 0; k < count; k++) {
         sendCommand("RETR " + to_string(k+1));
         if (validResponse()){
-            hashToCompare = hashFunc(recvMessage());
+            hashToCompare = hashFunc((msg=recvMessage()));
             for (int i = 0; i < hash.size(); i++) {
                 if (hash[i] == hashToCompare)
                 {
-                    notNew = false;
+                    newMsg = false;
                     break;
                 }
             }
 
-            if (notNew)
-                ret.push_back(k+1);
+            if (newMsg)
+            {
+                counter++;
+                if (paramO.back() == '/')
+                {
+                    ofstream outfile(paramO + to_string(name+counter));
+                    outfile << msg;
+                    outfile.close();
+                } else{
+                    ofstream outfile(paramO + "/" + to_string(name+counter));
+                    outfile << msg;
+                    outfile.close();
+                }
+                hashFile.clear();
+                hashFile << hashToCompare << endl;
+            }
             else
-                notNew = true;
+                newMsg = true;
         }
     }
 
+    hashFile.close();
 
-    return ret;
+    return counter;
+
+
 }
 
 /**
- * Works similairly like getNewMsg() except that this function is looking for those messages that were already downloaded.
- * @return vector of nubers that are specific to messages
+ * Set an timeout for @var time sec.
+ * @param time seconds to wait for
+ * @return return value of select() function
  */
-vector<int> ConnectionInterface::getDelMsg() {
-    vector<long> hash;
-    vector<int> ret;
-    ssize_t hashToCompare;
+int ConnectionInterface::timeout(int time){
+    timeval timeout;
+    fd_set fds;
+    FD_ZERO(&fds);
+    FD_SET(this->sockfd, &fds);
 
-    ifstream hashFile(this->cachePath);
-    long temp;
-    while (hashFile >> temp)
-        hash.push_back(temp);
-    bool del = false;
-    hashFile.close();
-    for (int i = 0; i < hash.size(); i++) {
-        sendCommand("RETR " + to_string(i+1));
-        if (validResponse()){
-            hashToCompare = hashFunc(recvMessage());
-            for (int k = 0; k < hash.size(); k++) {
-                if (hash[k] == hashToCompare)
-                {
-                    del = true;
-                    break;
-                }
-            }
+    timeout.tv_sec = time;
+    timeout.tv_usec = 0;
 
-            if (del)
-                ret.push_back(i+1);
-            else
-                del = false;
-        }
-    }
-
-    return ret;
+    return select(this->sockfd+1, &fds, NULL, NULL, &timeout);
 }
+
 /**
  * This method is from http://beej.us/guide/bgnet/output/html/multipage/getaddrinfoman.html.
  */
@@ -222,6 +221,12 @@ void ConnectionInterface::createSock() {
     memset (&hints, 0, sizeof hints);
     hints.ai_family = AF_UNSPEC;
     hints.ai_socktype = SOCK_STREAM;
+    int flags, n, error;
+    fd_set waitFd, tmpFd;
+    timeval tval;
+    socklen_t len;
+
+
     if (getaddrinfo(this->address.c_str(), this->portNum.c_str(), &hints, &serverinfo) != 0)
     {
         throw ClientError("getaddrinfo", "address has not been found");
@@ -232,26 +237,73 @@ void ConnectionInterface::createSock() {
                                    p->ai_protocol)) == -1) {
             continue;
         }
-        if (connect(this->sockfd, p->ai_addr, p->ai_addrlen) == -1) {
+        flags = fcntl(this->sockfd, F_GETFL, 0);
+        fcntl(this->sockfd, F_SETFL, flags | O_NONBLOCK);
+
+        if ((n = connect(this->sockfd, p->ai_addr, p->ai_addrlen)) < 0) {
+            if (errno != EINPROGRESS)
+            {
+                close(this->sockfd);
+                continue;
+            }
+        }
+
+        if (n == 0)
+            break;
+
+        FD_ZERO(&waitFd);
+        FD_SET(this->sockfd, &waitFd);
+        tmpFd = waitFd;
+        tval.tv_sec = 10;
+        tval.tv_usec = 0;
+
+        if ((n = select(this->sockfd + 1, &waitFd, &tmpFd, nullptr, &tval )) == 0)
+        {
             close(this->sockfd);
             continue;
         }
+
+        if (FD_ISSET(this->sockfd, &waitFd) || FD_ISSET(this->sockfd , &tmpFd))
+        {
+            len = sizeof(error);
+            if (getsockopt(this->sockfd, SOL_SOCKET, SO_ERROR, &error, &len) < 0)
+                continue;
+        }
+        else
+        {
+            continue;
+        }
+
         break;
     }
-
     if (p == NULL) {
         freeaddrinfo(serverinfo);
-        throw FailedToConnect("Failed to connect", "Try again");
+        throw FailedToConnect("Failed to connect", "");
     }
 
     freeaddrinfo(serverinfo);
+
+    fcntl(this->sockfd, F_SETFL, flags);
+
+    if (error)
+    {
+        throw FailedToConnect("Failed to connect", "");
+    }
+
+
+}
+
+void ConnectionInterface::setSockNonBlock(){
+    int flags = fcntl(this->sockfd, F_GETFL, 0);
+    if (fcntl(this->sockfd, F_SETFL, flags | O_NONBLOCK) == -1){
+
+    }
 }
 /**
  * This method initialize SSL and create socket. It also send STLS command if paramS is present.
  */
 void ConnectionInterface::initSSL() {
     long retSSLCert;
-    createSock();
 
     if (paramS)
     {
@@ -264,8 +316,11 @@ void ConnectionInterface::initSSL() {
         if (!this->validResponse())
             throw ServerError("STLS", "Server is not supporting STLS commnad");
 
-        this->stupidFlag = true;    //this flag is as stupid as writer of this code
+        this->stupidFlag = true;    //this flag is as stupid as a writer of this code
                                     //necessary for validResponse()
+    }
+    else{
+        createSock();
     }
 
     SSL_load_error_strings();
@@ -301,6 +356,7 @@ void ConnectionInterface::initSSL() {
     if(X509_V_OK != retSSLCert)
         throw ServerError("Cert", "Certificate is not OK");
 
+    setSockNonBlock();
 }
 
 /**
@@ -329,18 +385,50 @@ void ConnectionInterface::shutSSL() {
  * @return
  */
 int ConnectionInterface::deleteMessages() {
-    vector<int> msg = getDelMsg();
+    vector<long> hash;
+    ssize_t hashToCompare;
 
-    for (int i = 0; i < msg.size(); i++) {
-        sendCommand("DELE " + to_string(msg[i]));
-        if (!validResponse())
-            cerr<<"Can not delete this email with ID: " + msg[i] << endl;
+    ifstream hashFile(this->cachePath);
+    long temp;
+    while (hashFile >> temp)
+        hash.push_back(temp);
+
+    bool del = false;
+    hashFile.close();
+    int counter = 0;
+    for (int i = 0; i < hash.size(); i++) {
+        sendCommand("RETR " + to_string(i+1));
+        if (validResponse()){
+            hashToCompare = hashFunc(recvMessage());
+            for (int k = 0; k < hash.size(); k++) {
+                if (hash[k] == hashToCompare)
+                {
+                    del = true;
+                    break;
+                }
+            }
+
+            if (del)
+            {
+                counter++;
+                sendCommand("DELE " + to_string(i+1));
+                if (!validResponse()) {
+                    cerr << "Could not delete this msg: " + to_string(i + 1) << endl;
+
+                    counter--;
+                }
+            }
+            else
+                del = false;
+        }
     }
+    hashFile.close();
 
+    //delete cache file
     fstream cache;
     cache.open(this->cachePath, ofstream::out | ofstream::trunc);
     cache.close();
-    return (int) msg.size();
+    return counter;
 }
 
 /**
@@ -348,7 +436,8 @@ int ConnectionInterface::deleteMessages() {
  */
 void ConnectionInterface::cleanUp() {
     sendCommand("QUIT");
-    validResponse();
+    if (!validResponse())
+        throw ServerError("Messages will not be deleted." , "");
 }
 
 /**

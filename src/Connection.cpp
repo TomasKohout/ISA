@@ -31,6 +31,9 @@ Connection::Connection(const ParseParameters &parse) {
 void Connection::establishConnection() {
     this->createSock();
 
+    if (!this->paramS)
+        setSockNonBlock();
+
     if(this->paramS)
         this->initSSL();
     else if (!this->validResponse())
@@ -62,6 +65,7 @@ void Connection::sendCommand(string cmd) {
 /**
  * This is implemented virtual method from ConnectionInterface.
  * It is used for reading data from socket usualy by one byte.
+ * Using nonblocking sockets.
  * @param buff array of chars
  * @param size of buff
  * @return count of read bytes
@@ -72,16 +76,63 @@ ssize_t Connection::readSock(char *buff, int size){
 
     if (this->paramS && this->stupidFlag)
     {
-        byte = SSL_read(this->ssl, buff, size);
-        if (byte < 0)
-            throw ServerError("Reading from socket is inaccesible.", "Server might be down");
-    }
-    else{
-        byte = static_cast<int>(recv(this->sockfd, buff, size, 0));
-        if (byte < 0)
+        while ((byte = SSL_read(this->ssl, buff, size)) < 0)
         {
-            throw ServerError("Reading from socket is inaccesible.", "Server might be down");
+            int err = SSL_get_error(this->ssl, byte);
+            switch (err)
+            {
+                case SSL_ERROR_NONE: {
+                    continue;
+                }
+
+                case SSL_ERROR_ZERO_RETURN:
+                {
+                    throw ServerError("You have been disconected from the server" , "Server error");
+                }
+                case SSL_ERROR_WANT_READ:
+                {
+                    err = timeout(5);
+                    if (err > 0)
+                        continue;
+
+                    if (err == 0) {
+                        throw ServerError("Cannot read from socket", "Timeout");
+                    } else {
+                        throw ServerError("Cannot read from socket." , "ServerError");
+                    }
+                }
+                case SSL_ERROR_WANT_WRITE:
+                {
+                    err = timeout(5);
+                    if (err > 0)
+                        continue;
+                    if (err == 0) {
+                        throw ServerError("Cannot read from socket", "Timeout");
+                    } else {
+                        throw ServerError("Cannot read from socket." , "ServerError");
+                    }
+
+                }
+
+                default:
+                {
+                    throw ClientError("Imposible happend", "");
+                }
+
+            }
+
         }
+    }
+    else
+    {
+        byte = timeout(5);
+
+        if (byte == 0) {
+            throw ServerError("Cannot read from socket", "Timeout");
+        } else if (byte < 0){
+            throw ServerError("Cannot read from socket." , "ServerError");
+        }
+        byte = static_cast<int>(read(this->sockfd, buff, size));
 
     }
     return byte;

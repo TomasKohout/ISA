@@ -12,12 +12,9 @@
 #include <unistd.h>
 #include <openssl/ssl.h>
 #include <openssl/err.h>
-#include <openssl/bio.h>
 #include "Error.h"
 #include <openssl/ossl_typ.h>
 #include <vector>
-#include <regex>
-#include <functional>
 
 
 using namespace std;
@@ -60,8 +57,7 @@ protected:
     virtual ssize_t readSock(char *buff, int size) = 0;
     virtual void sendCommand(std::string cmd) = 0;
 
-    vector<int> getDelMsg();
-    vector<int> getOnlyNew(int count);
+    int getOnlyNew(int count);
 
     void createSock();
     void initSSL();
@@ -77,6 +73,12 @@ protected:
     int checkMessages();
 
     string lsOutDir();
+
+    int regularDownload(int count_of_messages);
+
+    void setSockNonBlock();
+
+    int timeout(int time);
 };
 
 

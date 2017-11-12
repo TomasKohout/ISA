@@ -51,9 +51,54 @@ void TLSConnection::establishConnection() {
  * @return count of read bytes
  */
 ssize_t TLSConnection::readSock(char *buff, int size) {
-    ssize_t byte;
-    if ((byte = SSL_read(this->ssl, buff, size)) < 0)
-        throw ServerError("Reading from socket is inaccesible.", "Server might be down");
+    int byte;
+
+    while ((byte = SSL_read(this->ssl, buff, size)) < 0)
+    {
+        int err = SSL_get_error(this->ssl, byte);
+        switch (err)
+        {
+            case SSL_ERROR_NONE: {
+                continue;
+            }
+
+            case SSL_ERROR_ZERO_RETURN:
+            {
+                throw ServerError("You have been disconected from the server" , "Server error");
+            }
+            case SSL_ERROR_WANT_READ:
+            {
+                err = timeout(5);
+                if (err > 0)
+                    continue;
+
+                if (err == 0) {
+                    throw ServerError("Cannot read from socket", "Timeout");
+                } else {
+                    throw ServerError("Cannot read from socket." , "ServerError");
+                }
+            }
+            case SSL_ERROR_WANT_WRITE:
+            {
+                err = timeout(5);
+                if (err > 0)
+                    continue;
+                if (err == 0) {
+                    throw ServerError("Cannot read from socket", "Timeout");
+                } else {
+                    throw ServerError("Cannot read from socket." , "ServerError");
+                }
+
+            }
+
+            default:
+            {
+                throw ClientError("Imposible happend", "");
+            }
+
+        }
+
+    }
     return byte;
 }
 

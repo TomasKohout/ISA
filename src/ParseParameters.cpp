@@ -4,7 +4,10 @@
 #include "ParseParameters.h"
 
 using namespace std;
+
+bool port = false;
 /**
+ *
  * Constructor
  * It only creates FileManipulator object
  */
@@ -63,7 +66,7 @@ void ParseParameters::parse(int argc, char **argv) {
  * Method that checks if all necessary arguments are setted.
  */
 void ParseParameters::areMandatoryArgsSeted() {
-    if (address.empty() || paramA.empty() || paramO.empty() || (paramT && paramS) || (!paramFileC.empty() && !paramDirC.empty()))
+    if (address.empty() || paramA.empty() || paramO.empty() || (paramT && paramS))
         throw BadArgumentError("Bad arguments", "Not allowed argument or badly tipped one.");
 }
 
@@ -73,8 +76,8 @@ void ParseParameters::areMandatoryArgsSeted() {
  * @return true or false
  */
 bool ParseParameters::isNumeric(string str) {
-    for (string::size_type i = 0; i < portNum.length(); i++) {
-        if (!isdigit(portNum[i]))
+    for (string::size_type i = 0; i < str.length(); i++) {
+        if (!isdigit(str[i]))
             return false;
     }
     return true;
@@ -96,8 +99,9 @@ void ParseParameters::setAddress(char *argv) {
  */
 void ParseParameters::setPortNum(char *argv) {
     portNum = string(argv);
+    port = true;
     if (!isNumeric(portNum))
-        throw BadPortError(portNum,"Try again");
+        throw BadPortError(portNum,"Try again. Port must be numeric.");
 }
 
 /**
@@ -107,7 +111,9 @@ void ParseParameters::setPortNum(char *argv) {
  */
 void ParseParameters::setParamT() {
     paramT = true;
-    portNum = "995";
+    if (!port)
+        portNum = "995";
+
     if (paramS)
         throw TooManyArgsError("-T", "-S has been already set");
 }
@@ -117,6 +123,8 @@ void ParseParameters::setParamT() {
  */
 void ParseParameters::setParamS() {
     paramS = true;
+    if (!port)
+        portNum = "110";
     if (paramT)
         throw TooManyArgsError("-S", "-T has been already set");
 }

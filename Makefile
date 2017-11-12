@@ -1,14 +1,23 @@
-
 CC=g++
-CFLAGS=-std=c++11
+CFLAGS=-c -g -pedantic 
 LDFLAGS=-lssl -lcrypto
 EXECUTABLE=popcl
 
+SOURCES=$(addprefix ./src/, main.cpp Connection.cpp Error.cpp ConnectionInterface.cpp TLSConnection.cpp ParseParameters.cpp FileManipulator.cpp)
+
+OBJECTS=$(SOURCES:.cpp=.o)
+
+
 .PHONY: all clean
 
-all:
-	g++ $(CFLAGS) -c *.cpp
-	g++ $(CFLAGS) -o  popcl *.o *.h -lssl -lcrypto
+all: $(EXECUTABLE)
+	
+$(EXECUTABLE): $(OBJECTS) 
+	$(CC) $(OBJECTS) -o $@ $(LDFLAGS)
+
+.cpp.o:
+	$(CC) $(CFLAGS) $< -o $@
 
 clean:
-	rm -rf *.o
+	rm -rf $(OBJECTS)
+

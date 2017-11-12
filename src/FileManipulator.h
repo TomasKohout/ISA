@@ -9,7 +9,6 @@
 #include <fstream>
 #include <vector>
 #include <sys/stat.h>
-#include <fstream>
 #include <iostream>
 #include <vector>
 #include "Error.h"

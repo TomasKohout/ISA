@@ -7,13 +7,13 @@
 
 using namespace std;
 void printHelp(){
-    cout << "Use this application for downloading emails. Popcl uses pop3 and pop3s protocol. Please be aware of it." << endl;
+    cout << "Use this application for download emails. Popcl uses pop3 and pop3s protocol. Please be aware of it." << endl;
     cout << "Use:" << endl;
     cout << "popcl [-h|--help] <server> [-p <port>] [-T|-S [-c <certfile>] [-C <certaddr>]] [-d] [-n] -a <auth_file> -o <out_dir>" << endl;
     cout << endl;
     cout << "-h, --help       : prints this help" << endl;
     cout << endl;
-    cout << "<server>         : server to connect to, hostname, IPv4 or IPv6. This is mandatory parameter!" << endl;
+    cout << "<server>         : server to connect to, hostname, IPv4 or IPv6 is needed. This is mandatory parameter!" << endl;
     cout << endl;
     cout << "[-p <port>]      : port is number from 1 to 65535. Check your email server for more info. Default value for -S and without -S or -T is port 110. -T default port is 995. This is not mandatory parameter!" << endl;
     cout << endl;
@@ -23,18 +23,18 @@ void printHelp(){
     cout << endl;
     cout << "[-C <certdir>]   : use this if you want load certificates from specific folder. certdir is directory with certificates in a pem format. Hash this folder firs! More info in openssl manual. This is not mandatory parameter!" << endl;
     cout << endl;
-    cout << "[-d] : use this parameter if you want delete all messages that are you have downloaded before. This is not mandatory parameter!" << endl;
+    cout << "[-d] : use this parameter if you want delete all messages that you downloaded before. This is not mandatory parameter!" << endl;
     cout << endl;
     cout << "[-n] : use this parameter for download only new messages. This is not mandatory parameter!" << endl;
     cout << endl;
     cout << "[-a <auth_file>] : <auth_file> is file in this format:"  << endl;
-    cout << "username = user" << endl;
-    cout << "password = pass" << endl;
+    cout << "user = username" << endl;
+    cout << "pass = password" << endl;
     cout << "any other format is not supported! This is mandatory parameter!" << endl;
     cout << endl;
     cout << "[-o <out_dir>]   : out_dir specifies directory where messages will be stored. This is mandatory parameter!" << endl;
     cout << endl;
-    cout << "if you use -d and -n together, popcl will firstly download new messages and after that it will delete downloaded messages." << endl;
+    cout << "if you use -d and -n together, popcl will firstly download new messages and after that it will delete downloaded messages from server side." << endl;
 }
 
 int main(int argc, char *argv[]) {
@@ -55,8 +55,6 @@ int main(int argc, char *argv[]) {
     }
 
     try {
-
-
         if (params.paramT)
         {
             TLSConnection tlsConnection = TLSConnection(params);
@@ -65,14 +63,14 @@ int main(int argc, char *argv[]) {
             {
 
                 if(params.paramN)
-                    cout << to_string(tlsConnection.downloadMessages()) + " new messages was downloaded!" << endl;
+                    cout << to_string(tlsConnection.downloadMessages()) + " new messages were downloaded!" << endl;
                 else
-                    cout << to_string(tlsConnection.downloadMessages()) + " messages was downloaded!" << endl;
+                    cout << to_string(tlsConnection.downloadMessages()) + " messages were downloaded!" << endl;
             }
             else if (params.paramD && params.paramN)
             {
-                cout << to_string(tlsConnection.downloadMessages()) + " new messages was downloaded and " + to_string(
-                        tlsConnection.deleteMessages()) + " was deleted" << endl;
+                cout << to_string(tlsConnection.downloadMessages()) + " new messages were downloaded and ";
+                cout << to_string(tlsConnection.deleteMessages()) + " were deleted" << endl;
             }
             else if (params.paramD){
                 cout << to_string(tlsConnection.deleteMessages()) + " old messages deleted!" << endl;
@@ -88,14 +86,14 @@ int main(int argc, char *argv[]) {
             if (!params.paramD)
             {
                 if(params.paramN)
-                    cout << to_string(connect.downloadMessages()) + " new messages was downloaded!" << endl;
+                    cout << to_string(connect.downloadMessages()) + " new messages were downloaded!" << endl;
                 else
-                    cout << to_string(connect.downloadMessages()) + " messages was downloaded!" << endl;
+                    cout << to_string(connect.downloadMessages()) + " messages were downloaded!" << endl;
             }
             else if (params.paramD && params.paramN)
             {
-                cout << to_string(connect.downloadMessages()) + " new messages was downloaded and " + to_string(
-                        connect.deleteMessages()) + " was deleted" << endl;
+                cout << to_string(connect.downloadMessages()) + " new messages were downloaded and ";
+                cout << to_string(connect.deleteMessages()) + " were deleted" << endl;
             }
             else if (params.paramD){
                 cout << to_string(connect.deleteMessages()) + " old messages deleted!" << endl;

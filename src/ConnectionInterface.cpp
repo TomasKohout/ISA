@@ -76,12 +76,12 @@ bool ConnectionInterface::authenticate() {
     if(validResponse())
         sendCommand("PASS " + PASS );
     else{
-        throw ServerError("USER", "Bad username");
+        throw ServerError("USER", "Špatné uživatelské jméno.");
     }
     if (validResponse())
         return true;
     else
-        throw ServerError("PASS", "Wrong password");
+        throw ServerError("PASS", "Špatné heslo");
 }
 
 
@@ -150,10 +150,14 @@ int ConnectionInterface::getOnlyNew(int count) {
     int name = getStartNameNumberForNews();
     ssize_t hashToCompare;
     string msg;
-    fstream hashFile(this->cachePath);
+    fstream hashFil(this->cachePath);
     long temp;
-    while (hashFile >> temp)
+    while (hashFil >> temp)
         hash.push_back(temp);
+
+    hashFil.close();
+
+    ofstream hashFile(this->cachePath, ios::app);
     bool newMsg = true;
     int counter = 0;
     for (int k = 0; k < count; k++) {
@@ -181,7 +185,6 @@ int ConnectionInterface::getOnlyNew(int count) {
                     outfile << msg;
                     outfile.close();
                 }
-                hashFile.clear();
                 hashFile << hashToCompare << endl;
             }
             else
@@ -229,7 +232,7 @@ void ConnectionInterface::createSock() {
 
     if (getaddrinfo(this->address.c_str(), this->portNum.c_str(), &hints, &serverinfo) != 0)
     {
-        throw ClientError("getaddrinfo", "address has not been found");
+        throw ClientError("getaddrinfo", "adresa neexistuje");
     }
 
     for(p = serverinfo; p != NULL; p = p->ai_next) {
@@ -278,7 +281,7 @@ void ConnectionInterface::createSock() {
     }
     if (p == NULL) {
         freeaddrinfo(serverinfo);
-        throw FailedToConnect("Failed to connect", "");
+        throw FailedToConnect("Server neodpovída", " Nebo neexistující adresa");
     }
 
     freeaddrinfo(serverinfo);
@@ -287,7 +290,7 @@ void ConnectionInterface::createSock() {
 
     if (error)
     {
-        throw FailedToConnect("Failed to connect", "");
+        throw FailedToConnect("Server neodpovída", " Nebo neexistující adresa");
     }
 
 
@@ -308,13 +311,13 @@ void ConnectionInterface::initSSL() {
     if (paramS)
     {
         if (!this->validResponse())
-            throw ServerError("Error", "Server respond is not OK");
+            throw ServerError("Error", "Server je poškozený.");
 
         string tmp = "STLS\r\n";
         send(this->sockfd, tmp.c_str(), tmp.length(), 0);
 
         if (!this->validResponse())
-            throw ServerError("STLS", "Server is not supporting STLS commnad");
+            throw ServerError("STLS", "Server nepodporuje STLS.");
 
         this->stupidFlag = true;    //this flag is as stupid as a writer of this code
                                     //necessary for validResponse()
@@ -340,22 +343,23 @@ void ConnectionInterface::initSSL() {
         retSSLCert = SSL_CTX_load_verify_locations(this->sslCtx, this->paramFileC.c_str(), NULL);
 
     if (retSSLCert != 1)
-        throw ClientError("SSL certs", "No certificates");
+        throw ClientError("SSL certifikáty", "Chybí nebo jsou chybné.");
 
     this->ssl = SSL_new(this->sslCtx);
     SSL_set_fd(this->ssl, this->sockfd);
 
     if (SSL_connect(this->ssl) != 1)
-        throw ServerError("SSL_connect", "Can not initialize a connection");
+        throw ServerError("SSL_connect", "Nelze vytvořit zabezpečené spojení.");
     //get certificate from server
     X509 * cert = SSL_get_peer_certificate(this->ssl);
     if (cert == NULL)
-        throw ServerError("Cert", "Server does not send any certificate");
+        throw ServerError("Certifikát", "Server neposkytl certifikát.");
     //check if certificate is ok
     retSSLCert = SSL_get_verify_result(this->ssl);
     if(X509_V_OK != retSSLCert)
-        throw ServerError("Cert", "Certificate is not OK");
+        throw ServerError("Certifikát", "Certifikát neodpovídá.");
 
+    X509_free(cert);
     setSockNonBlock();
 }
 
@@ -413,7 +417,7 @@ int ConnectionInterface::deleteMessages() {
                 counter++;
                 sendCommand("DELE " + to_string(i+1));
                 if (!validResponse()) {
-                    cerr << "Could not delete this msg: " + to_string(i + 1) << endl;
+                    throw ServerError("Nelze smazat zprávu č. " + to_string(i + 1), "Zkuste to prosím znovu.");
 
                     counter--;
                 }
@@ -437,7 +441,7 @@ int ConnectionInterface::deleteMessages() {
 void ConnectionInterface::cleanUp() {
     sendCommand("QUIT");
     if (!validResponse())
-        throw ServerError("Messages will not be deleted." , "");
+        throw ServerError("Zprávy nebudou smazány." , "Zkuste to znovu.");
 }
 
 /**

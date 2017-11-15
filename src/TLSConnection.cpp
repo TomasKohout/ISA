@@ -64,7 +64,7 @@ ssize_t TLSConnection::readSock(char *buff, int size) {
 
             case SSL_ERROR_ZERO_RETURN:
             {
-                throw ServerError("You have been disconected from the server" , "Server error");
+                throw ServerError("Server error" ,"Byl/a jste odpojen/a od serveru");
             }
             case SSL_ERROR_WANT_READ:
             {
@@ -73,9 +73,9 @@ ssize_t TLSConnection::readSock(char *buff, int size) {
                     continue;
 
                 if (err == 0) {
-                    throw ServerError("Cannot read from socket", "Timeout");
+                    throw ServerError("Timeout", "Server neodpovídá");
                 } else {
-                    throw ServerError("Cannot read from socket." , "ServerError");
+                    throw ServerError("ServerError", "Server neodpovídá.");
                 }
             }
             case SSL_ERROR_WANT_WRITE:
@@ -84,16 +84,16 @@ ssize_t TLSConnection::readSock(char *buff, int size) {
                 if (err > 0)
                     continue;
                 if (err == 0) {
-                    throw ServerError("Cannot read from socket", "Timeout");
+                    throw ServerError("Timeout", "Server neodpovídá");
                 } else {
-                    throw ServerError("Cannot read from socket." , "ServerError");
+                    throw ServerError("ServerError", "Server neodpovídá.");
                 }
 
             }
 
             default:
             {
-                throw ClientError("Imposible happend", "");
+                throw ClientError("Právě se stalo nemožné.", "");
             }
 
         }
@@ -111,7 +111,7 @@ ssize_t TLSConnection::readSock(char *buff, int size) {
 void TLSConnection::sendCommand(string cmd) {
     cmd += "\r\n";
     if (SSL_write(this->ssl, cmd.c_str(), static_cast<int>(cmd.size())) < 0)
-        throw ServerError("Can not write into socket", "Server closed the connection");
+        throw ServerError("Nelze posílat zprávy", "Server uzavřel spojení.");
 }
 
 

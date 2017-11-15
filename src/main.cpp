@@ -7,44 +7,46 @@
 
 using namespace std;
 void printHelp(){
-    cout << "Use this application for download emails. Popcl uses pop3 and pop3s protocol. Please be aware of it." << endl;
-    cout << "Use:" << endl;
+    cout << "Tato aplikace slouží ke stažení emailů pomocí POP3 protokolu." << endl;
+    cout << "Použítí:" << endl;
     cout << "popcl [-h|--help] <server> [-p <port>] [-T|-S [-c <certfile>] [-C <certaddr>]] [-d] [-n] -a <auth_file> -o <out_dir>" << endl;
     cout << endl;
-    cout << "-h, --help       : prints this help" << endl;
+    cout << "-h, --help       : Vypíše nápovědu." << endl;
     cout << endl;
-    cout << "<server>         : server to connect to, hostname, IPv4 or IPv6 is needed. This is mandatory parameter!" << endl;
+    cout << "<server>         : IPv4 nebo IPv6 adresa, nebo doménové jméno. Povinný argument!" << endl;
     cout << endl;
-    cout << "[-p <port>]      : port is number from 1 to 65535. Check your email server for more info. Default value for -S and without -S or -T is port 110. -T default port is 995. This is not mandatory parameter!" << endl;
+    cout << "[-p <port>]      : mění výchozí nastavení portu. port je číslo od 1 - 65535" << endl;
     cout << endl;
-    cout << "[-T|-S] : start tls connection. This is not mandatory parameter!" << endl;
+    cout << "[-T|-S] : Zapne šifrování komunikace." << endl;
     cout << endl;
-    cout << "[-c <certfile>]  : use this if you want load specific certificate. certfile is certificate in a pem format. This is not mandatory parameter!" << endl;
+    cout << "[-c <certfile>]  : Pouze s -S nebo -T. Cesta k souboru, který obsahuje certifikát s koncovkou .pem." << endl;
     cout << endl;
-    cout << "[-C <certdir>]   : use this if you want load certificates from specific folder. certdir is directory with certificates in a pem format. Hash this folder firs! More info in openssl manual. This is not mandatory parameter!" << endl;
+    cout << "[-C <certaddr>]  : Pouze s -S nebo -T. Cesta k adresáři obsahující adresář certikátů.  : " << endl;
     cout << endl;
-    cout << "[-d] : use this parameter if you want delete all messages that you downloaded before. This is not mandatory parameter!" << endl;
+    cout << "[-d] : smaže již stažené zprávy." << endl;
     cout << endl;
-    cout << "[-n] : use this parameter for download only new messages. This is not mandatory parameter!" << endl;
+    cout << "[-n] : stáhne pouze nové zprávy, tedy ty které ještě nebyly staženy." << endl;
     cout << endl;
-    cout << "[-a <auth_file>] : <auth_file> is file in this format:"  << endl;
+    cout << "[-a <auth_file>] : <auth_file> je soubor ve formátu:"  << endl;
     cout << "user = username" << endl;
     cout << "pass = password" << endl;
-    cout << "any other format is not supported! This is mandatory parameter!" << endl;
+    cout << "jiný formát není podporovaný. Mezery jsou povinné. Povinný argument" << endl;
     cout << endl;
-    cout << "[-o <out_dir>]   : out_dir specifies directory where messages will be stored. This is mandatory parameter!" << endl;
+    cout << "[-o <out_dir>]   : adresář pro ukládání zpráv. Povinný argument." << endl;
     cout << endl;
-    cout << "if you use -d and -n together, popcl will firstly download new messages and after that it will delete downloaded messages from server side." << endl;
+    cout << "[-n -d]          : stáhne nové zprávy a následně smaže již stažené zprávy." << endl;
 }
 
 int main(int argc, char *argv[]) {
+    int download, deleted = 0;
     ParseParameters params = ParseParameters();
     try {
         params.parse(argc, argv);
     }
     catch (Error& error)
     {
-        printHelp();
+        cerr << error.what() << endl;
+        cerr << "Pro nápovědu spusťte program s argumentem -h nebo --help" << endl;
         return 0;
     }
 
@@ -61,19 +63,15 @@ int main(int argc, char *argv[]) {
             tlsConnection.authenticate();
             if (!params.paramD)
             {
-
-                if(params.paramN)
-                    cout << to_string(tlsConnection.downloadMessages()) + " new messages were downloaded!" << endl;
-                else
-                    cout << to_string(tlsConnection.downloadMessages()) + " messages were downloaded!" << endl;
+                download = tlsConnection.downloadMessages();
             }
             else if (params.paramD && params.paramN)
             {
-                cout << to_string(tlsConnection.downloadMessages()) + " new messages were downloaded and ";
-                cout << to_string(tlsConnection.deleteMessages()) + " were deleted" << endl;
+                download = tlsConnection.downloadMessages();
+                deleted = tlsConnection.deleteMessages();
             }
             else if (params.paramD){
-                cout << to_string(tlsConnection.deleteMessages()) + " old messages deleted!" << endl;
+               deleted = tlsConnection.deleteMessages();
             }
 
             tlsConnection.cleanUp();
@@ -85,18 +83,15 @@ int main(int argc, char *argv[]) {
             connect.authenticate();
             if (!params.paramD)
             {
-                if(params.paramN)
-                    cout << to_string(connect.downloadMessages()) + " new messages were downloaded!" << endl;
-                else
-                    cout << to_string(connect.downloadMessages()) + " messages were downloaded!" << endl;
+                download = connect.downloadMessages();
             }
             else if (params.paramD && params.paramN)
             {
-                cout << to_string(connect.downloadMessages()) + " new messages were downloaded and ";
-                cout << to_string(connect.deleteMessages()) + " were deleted" << endl;
+                download = connect.downloadMessages();
+                deleted = connect.deleteMessages();
             }
             else if (params.paramD){
-                cout << to_string(connect.deleteMessages()) + " old messages deleted!" << endl;
+                deleted = connect.deleteMessages();
             }
 
             connect.cleanUp();
@@ -107,6 +102,13 @@ int main(int argc, char *argv[]) {
         cerr << e.what()<<endl;
         exit(ERR);
     }
+
+    if (!params.paramD)
+        cout << to_string(download) + " zpráv bylo staženo!" << endl;
+    else if (params.paramD && params.paramN)
+        cout << to_string(download) + " zpráv bylo staženo a " + to_string(deleted) + " zpráv bylo smazáno!" << endl;
+    else if (params.paramD)
+        cout << to_string(deleted) + " zpráv bylo smazáno!"<< endl;
     return 0;
 }
 

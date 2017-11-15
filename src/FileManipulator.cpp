@@ -60,11 +60,11 @@ std::vector<string> FileManipulator::readAuthFile(string path) {
             count++;
         }
     } else
-        throw FileIsNotOpenError("authfile", "Bad thing had just happend!");
+        throw FileIsNotOpenError("authfile", "Nelze otevřít soubor s údaji pro připojení.");
     if (count !=  6) //count have to be equal to 6
     {
         authFile.close();
-        throw BadFileFormatError("authfile", "AuthFile has a bad format");
+        throw BadFileFormatError("authfile", "AuthFile má špatný formát.");
     }
     authFile.close();
     return arr;

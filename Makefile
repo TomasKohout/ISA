@@ -1,6 +1,6 @@
 CC=g++
 CFLAGS=-c -g -pedantic 
-LDFLAGS=-lssl -lcrypto
+LDFLAGS=-L/etc/ssl/lib -lssl -lcrypto
 EXECUTABLE=popcl
 
 SOURCES=$(addprefix ./src/, main.cpp Connection.cpp Error.cpp ConnectionInterface.cpp TLSConnection.cpp ParseParameters.cpp FileManipulator.cpp)

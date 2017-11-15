@@ -22,23 +22,23 @@ ParseParameters::ParseParameters() {
 void ParseParameters::parse(int argc, char **argv) {
 
     for (int i = 1; i < argc; i++) {
-        if (strcmp(argv[i] , "-p") == 0)
+        if (strcmp(argv[i] , "-p") == 0 && portNum.empty())
             setPortNum(argv[++i]);
-        else if (strcmp(argv[i] ,"-T") == 0)
+        else if (strcmp(argv[i] ,"-T") == 0 && !paramT)
             setParamT();
-        else if (strcmp(argv[i] ,"-S") == 0)
+        else if (strcmp(argv[i] ,"-S") == 0 && !paramS)
             setParamS();
-        else if (strcmp(argv[i] ,"-c" ) == 0)
+        else if (strcmp(argv[i] ,"-c" ) == 0 && paramFileC.empty())
             setParamFileC(argv[++i]);
-        else if (strcmp(argv[i] ,"-C") == 0)
+        else if (strcmp(argv[i] ,"-C") == 0 && paramDirC.empty())
             setParamDirC(argv[++i]);
-        else if (strcmp(argv[i] , "-d") == 0)
+        else if (strcmp(argv[i] , "-d") == 0 && !paramD)
             setParamD();
-        else if (strcmp(argv[i] ,"-n") == 0)
+        else if (strcmp(argv[i] ,"-n") == 0 && !paramN)
             setParamN();
-        else if (strcmp(argv[i] ,"-a") == 0)
+        else if (strcmp(argv[i] ,"-a") == 0 && USER.empty() && PASS.empty())
             getUserAndPass(argv[++i]);
-        else if (strcmp(argv[i], "-o") == 0)
+        else if (strcmp(argv[i], "-o") == 0 && paramO.empty())
             setParamO(argv[++i]);
         else if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0)
         {
@@ -50,7 +50,7 @@ void ParseParameters::parse(int argc, char **argv) {
                 setAddress(argv[i]);
                 continue;
             }
-            throw BadArgumentError("Bad arguments", "Not allowed argument or badly tipped one.");
+            throw BadArgumentError("Špatné argumenty", "Špatně zadané, opakující se nebo jinak poškozené argumenty.");
         }
     }
     areMandatoryArgsSeted();
@@ -66,8 +66,8 @@ void ParseParameters::parse(int argc, char **argv) {
  * Method that checks if all necessary arguments are setted.
  */
 void ParseParameters::areMandatoryArgsSeted() {
-    if (address.empty() || paramA.empty() || paramO.empty() || (paramT && paramS))
-        throw BadArgumentError("Bad arguments", "Not allowed argument or badly tipped one.");
+    if (address.empty() || paramA.empty() || paramO.empty() || (paramT && paramS) || ((!paramT && !paramS) && (!paramDirC.empty() || !paramFileC.empty())))
+        throw BadArgumentError("Špatné argumenty", "Špatně zadané, opakující se nebo jinak poškozené argumenty.");
 }
 
 /**
@@ -88,7 +88,7 @@ bool ParseParameters::isNumeric(string str) {
  */
 void ParseParameters::setAddress(char *argv) {
         if (string(argv).find('.') == string::npos && string(argv).find(':') == string::npos)
-            throw BadArgumentError("Bad argumet", string(argv));
+            throw BadArgumentError("Špatný argument", string(argv));
 
         address = string(argv);
 
@@ -101,7 +101,7 @@ void ParseParameters::setPortNum(char *argv) {
     portNum = string(argv);
     port = true;
     if (!isNumeric(portNum))
-        throw BadPortError(portNum,"Try again. Port must be numeric.");
+        throw BadPortError(portNum,"Port musí být číselný.");
 }
 
 /**
@@ -115,7 +115,7 @@ void ParseParameters::setParamT() {
         portNum = "995";
 
     if (paramS)
-        throw TooManyArgsError("-T", "-S has been already set");
+        throw TooManyArgsError("-T", "-S je již zadaný!");
 }
 /**
  * This method sets paramS and validate that paramT is not set.
@@ -126,7 +126,7 @@ void ParseParameters::setParamS() {
     if (!port)
         portNum = "110";
     if (paramT)
-        throw TooManyArgsError("-S", "-T has been already set");
+        throw TooManyArgsError("-S", "-T je již zadaný!");
 }
 /**
  * Checks if argv is path to a file and sets this->paramFileC.
@@ -137,7 +137,7 @@ void ParseParameters::setParamFileC(char *argv) {
     if(manipulate.fileOrFolder(string(argv)) == FI)
         paramFileC = string(argv);
     else
-        throw NotFileOrDirError("-c", "not a file");
+        throw NotFileOrDirError("-c", "není to soubor");
 }
 
 /**
@@ -149,7 +149,7 @@ void ParseParameters::setParamDirC(char *argv) {
     if (manipulate.fileOrFolder(string(argv)) == FO)
         paramDirC = string(argv);
     else
-        throw NotFileOrDirError("-C", "not a directory");
+        throw NotFileOrDirError("-C", "není to adresář");
 }
 /**
  * Sets this->paramN.
@@ -178,7 +178,7 @@ void ParseParameters::setParamO(char *argv) {
             paramO += "/";
     }
     else
-        throw NotFileOrDirError("-o", "not a directory");
+        throw NotFileOrDirError("-o", "není to adresář");
 }
 /**
  * Checks if argv is path to a file.
@@ -192,7 +192,7 @@ void ParseParameters::getUserAndPass(char *argv) {
     if (manipulate.fileOrFolder(string(argv)) == FI)
         paramA = string(argv);
     else
-        throw NotFileOrDirError("-a", "not a file");
+        throw NotFileOrDirError("-a", "není to soubor");
 
     vec = manipulate.readAuthFile(paramA);
     USER = vec[0];

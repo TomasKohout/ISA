@@ -1,0 +1,45 @@
+Návod k použití}
+   Pro přeložení programu je potřeba mít nainstalovanou Openssl knihovnu a to od verze 1.0.2 po nejnovější. Dále je třeba mít překladač g++, který podporuje jazyk C++ ve verzi z roku 2011. 
+
+   Pokud splňujete výše uvedené, otevřete terminál ve složce s programem a spusťte příkazem make překlad. Po přeložení programu spusťte program jak je popsáno níže.
+
+Tento program je sestavený z následujících zdrojových souborů v adresáři src/: 
+
+main.cpp, Connection.cpp/h, ConnectionInterface.cpp/h, Error.cpp/h, FileManipulator.cpp/h, ParseParameters.cpp/h, TLSConnection.cpp/h.
+
+
+popcl <server> -­a <auth_file> -­o <out_dir> [-p <port>] [-­d] [-­n] [-­T|-­S [-­c <certfile>] [­-C <certaddr>]] [-h|--help]
+
+Povinné argumenty
+ <server> 
+	IPv4 nebo IPv6 adresa, nebo doménové jméno
+ -a <auth_file>
+	soubor s autentifikačními údaji
+ -o <out_dir>
+	adresář pro ukládání souborů
+
+Volitelné parametry
+ -p <port> 
+	zmení výchozí nastavení portu
+ -n
+	stáhne pouze nové zprávy, tedy ty které ještě nebyly staženy
+ -d 
+	smaže již stažené zprávy
+ -n -d 
+	stáhne nové zprávy a následně smaže již stažené zprávy
+ -T 
+	zapne šiforvání celé komunikace
+ -S 
+	naváže nešifrované spojení a pomocí příkazu STLS přejde na šifrované spojení
+ -c <certfile> 
+	cesta k souboru, který obsahuje certifikát s koncovkou .pem
+ -C <certaddr> 
+	cesta k adresáři obsahující adresář certikátů
+ -h|--help 
+	nápovědu a skončí
+
+Parametry -c a -C je možné používat společně nebo každý zvlášť, ale pouze v případě, kdy je použitý parametr -S nebo -T.
+
+Příklad použití:
+./popcl -a auth -o dir pop3.seznam.cz -p 110 -S -c cert.pem -n
+5 nových zpráv bylo staženo
